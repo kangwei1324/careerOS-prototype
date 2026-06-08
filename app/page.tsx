@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 
 export default function LandingPage() {
@@ -79,20 +80,18 @@ export default function LandingPage() {
               ["CV written the night before", "Portfolio built continuously over time"],
               ["Black-box match scores", "Human-readable AI, honest trade-offs"],
             ].map(([bad, good], i) => (
-              <>
+              <React.Fragment key={i}>
                 <div
-                  key={`bad-${i}`}
                   className="p-4 text-[#424242]/45 border-t border-[#424242]/8 bg-[#424242]/2"
                 >
                   {bad}
                 </div>
                 <div
-                  key={`good-${i}`}
                   className="p-4 text-[#424242] font-medium border-t border-[#424242]/8 border-l border-l-[#424242]/8"
                 >
                   {good}
                 </div>
-              </>
+              </React.Fragment>
             ))}
           </div>
         </div>

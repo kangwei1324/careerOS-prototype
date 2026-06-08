@@ -17,11 +17,14 @@ export async function POST(req: NextRequest) {
   const db = getDb();
 
   // Record the interest (UNIQUE constraint handles duplicates)
-  db.prepare(
+  const result = db.prepare(
     `INSERT OR IGNORE INTO employer_interests (employer_id, candidate_id) VALUES (?, ?)`
   ).run(session.userId, candidateId);
 
-  return NextResponse.json({ ok: true });
+  // inserted = true only if it was a new row (not a duplicate)
+  const inserted = result.changes > 0;
+
+  return NextResponse.json({ ok: true, inserted });
 }
 
 // GET /api/interest?candidateId=... — get interest count + employer names for a candidate

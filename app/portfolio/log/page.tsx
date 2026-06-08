@@ -4,12 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
+import AppNavbar from "@/components/layout/AppNavbar";
+import { useToast } from "@/components/ui/Toast";
+import { CATEGORY_COLOURS, type PortfolioEntry } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 
 const CATEGORIES = ["Technical", "Leadership", "Communication", "Creative", "Other"];
 
 export default function LogActivityPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { showToast } = useToast();
 
   const [form, setForm] = useState({
     raw_log: "",
@@ -22,9 +27,9 @@ export default function LogActivityPage() {
   const [editedEntry, setEditedEntry] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Redirect outside of render to avoid setState-during-render error
   useEffect(() => {
     if (!user) router.push("/auth/signin");
+    else if (user.role !== "candidate") router.push("/dashboard");
   }, [user, router]);
 
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -40,17 +45,14 @@ export default function LogActivityPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to generate entry");
-      }
 
-      // Ensure skills is always an array even if AI returns undefined
+      if (!res.ok) throw new Error(data.error || "Failed to generate entry");
+
       const safeData = { entry: data.entry ?? "", skills: Array.isArray(data.skills) ? data.skills : [] };
       setPreview(safeData);
       setEditedEntry(safeData.entry);
     } catch (err: any) {
-      alert(`AI generation failed: ${err.message || "Try again."}`);
+      showToast(`AI generation failed: ${err.message || "Try again."}`, "error");
     } finally {
       setGenerating(false);
     }
@@ -60,7 +62,7 @@ export default function LogActivityPage() {
     if (!preview) return;
     setSaving(true);
     try {
-      await fetch("/api/portfolio/entries", {
+      const res = await fetch("/api/portfolio/entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -71,9 +73,11 @@ export default function LogActivityPage() {
           skills: preview.skills,
         }),
       });
+      if (!res.ok) throw new Error("Save failed");
+      showToast("Entry saved to portfolio ✓", "success");
       router.push("/portfolio/manage");
     } catch {
-      alert("Failed to save. Try again.");
+      showToast("Failed to save. Try again.", "error");
     } finally {
       setSaving(false);
     }
@@ -83,44 +87,38 @@ export default function LogActivityPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
-      <nav className="sticky top-0 z-40 bg-[#f7f7f7]/90 backdrop-blur border-b border-[#424242]/8 px-6 py-3.5 flex justify-between items-center">
-        <Link href="/dashboard" className="text-xl font-black tracking-tight text-[#424242]">
-          Career<span className="text-[#ffc000]">OS.</span>
-        </Link>
-        <Link href="/dashboard" className="text-[12px] font-bold text-[#424242]/50 hover:text-[#424242] transition-colors">
-          ← Dashboard
-        </Link>
-      </nav>
-
-      <div className="max-w-2xl mx-auto px-6 py-10">
+      <AppNavbar />
+      <main className="max-w-2xl mx-auto px-6 py-10">
         <h1 className="text-[26px] font-black text-[#424242] mb-1">Log an activity</h1>
-        <p className="text-[13px] text-[#424242]/45 mb-8">
+        <p className="text-[13px] text-[#424242]/50 mb-8">
           Describe what you did in plain language. AI will turn it into a portfolio entry.
         </p>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-7 space-y-6">
           {/* What I did */}
           <div>
-            <label className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/50 mb-2">
+            <label htmlFor="raw_log" className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/50 mb-2">
               What did you do? *
             </label>
             <textarea
+              id="raw_log"
               value={form.raw_log}
               onChange={(e) => update("raw_log", e.target.value)}
               rows={5}
               placeholder="e.g. I led the migration of our payment service from REST to GraphQL. Worked with 3 engineers and reduced API response time by 40%. Presented the results to the CTO."
               className="w-full border border-[#424242]/15 rounded-xl px-4 py-3 text-[13px] text-[#424242] outline-none focus:border-[#ffc000] transition-colors resize-none leading-relaxed"
             />
-            <p className="text-[10px] text-[#424242]/30 mt-1">Be specific. Numbers and outcomes make better portfolio entries.</p>
+            <p className="text-[10px] text-[#424242]/40 mt-1">Be specific. Numbers and outcomes make better portfolio entries.</p>
           </div>
 
           {/* Category + Date */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/50 mb-2">
+              <label htmlFor="category" className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/50 mb-2">
                 Category
               </label>
               <select
+                id="category"
                 value={form.category}
                 onChange={(e) => update("category", e.target.value)}
                 className="w-full border border-[#424242]/15 rounded-xl px-4 py-2.5 text-[13px] text-[#424242] outline-none focus:border-[#ffc000] bg-white"
@@ -129,12 +127,14 @@ export default function LogActivityPage() {
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/50 mb-2">
+              <label htmlFor="entry_date" className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/50 mb-2">
                 Date
               </label>
               <input
+                id="entry_date"
                 type="date"
                 value={form.entry_date}
+                max={new Date().toISOString().split("T")[0]}
                 onChange={(e) => update("entry_date", e.target.value)}
                 className="w-full border border-[#424242]/15 rounded-xl px-4 py-2.5 text-[13px] text-[#424242] outline-none focus:border-[#ffc000]"
               />
@@ -149,7 +149,7 @@ export default function LogActivityPage() {
           >
             {generating ? (
               <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
                 Generating portfolio entry…
               </>
             ) : (
@@ -162,7 +162,7 @@ export default function LogActivityPage() {
         {preview && (
           <div className="mt-6 bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-7 space-y-5 animate-fade-in">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#ffc000]" />
+              <span className="w-2 h-2 rounded-full bg-[#ffc000]" aria-hidden="true" />
               <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50">
                 AI-generated entry — edit freely
               </h2>
@@ -172,6 +172,7 @@ export default function LogActivityPage() {
               value={editedEntry}
               onChange={(e) => setEditedEntry(e.target.value)}
               rows={4}
+              aria-label="Edit AI-generated portfolio entry"
               className="w-full border border-[#ffc000]/40 bg-[#ffc000]/5 rounded-xl px-4 py-3 text-[14px] text-[#424242] outline-none focus:border-[#ffc000] transition-colors resize-none leading-relaxed font-medium"
             />
 
@@ -206,7 +207,7 @@ export default function LogActivityPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

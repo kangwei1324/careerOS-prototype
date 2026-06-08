@@ -1,16 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useAuthStore } from "@/stores/authStore";
-
-interface Entry {
-  id: number;
-  polished_entry: string;
-  category: string;
-  entry_date: string;
-  skills: string[];
-}
+import AppNavbar from "@/components/layout/AppNavbar";
+import { useToast } from "@/components/ui/Toast";
+import { CATEGORY_COLOURS, type PortfolioEntry } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 
 interface Profile {
   name: string;
@@ -20,14 +15,6 @@ interface Profile {
   bio: string;
   skills: string[];
 }
-
-const CATEGORY_COLOURS: Record<string, string> = {
-  Technical: "bg-blue-100 text-blue-700",
-  Leadership: "bg-purple-100 text-purple-700",
-  Communication: "bg-green-100 text-green-700",
-  Creative: "bg-pink-100 text-pink-700",
-  Other: "bg-[#424242]/8 text-[#424242]/60",
-};
 
 export default function TalentProfileClient({
   candidateId,
@@ -39,10 +26,11 @@ export default function TalentProfileClient({
   candidateId: number;
   username: string;
   profile: Profile;
-  entries: Entry[];
+  entries: PortfolioEntry[];
   interestCount: number;
 }) {
   const user = useAuthStore((s) => s.user);
+  const { showToast } = useToast();
   const [interested, setInterested] = useState(false);
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState(interestCount);
@@ -52,50 +40,54 @@ export default function TalentProfileClient({
   const expressInterest = async () => {
     if (!user || user.role !== "employer") return;
     setLoading(true);
-    await fetch("/api/interest", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ candidateId }),
-    });
-    setInterested(true);
-    setCount((c) => c + 1);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/interest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateId }),
+      });
+      const data = await res.json();
+      // Only increment if it was a new signal (not a duplicate)
+      if (data.inserted) setCount((c) => c + 1);
+      setInterested(true);
+      showToast("Interest expressed ✓", "success");
+    } catch {
+      showToast("Failed to send signal. Try again.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
-      <nav className="sticky top-0 z-40 bg-[#f7f7f7]/90 backdrop-blur border-b border-[#424242]/8 px-6 py-3.5 flex justify-between items-center">
-        <Link href="/dashboard" className="text-xl font-black tracking-tight text-[#424242]">
-          Career<span className="text-[#ffc000]">OS.</span>
-        </Link>
-        <Link href="/talent" className="text-[12px] font-bold text-[#424242]/50 hover:text-[#424242] transition-colors">
-          ← Talent pool
-        </Link>
-      </nav>
+      <AppNavbar />
 
-      <div className="max-w-2xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
-        {/* Signals first — employer layout */}
+      <main className="max-w-2xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
+        {/* Signal summary card */}
         <div className="bg-[#424242] rounded-2xl p-6 text-white">
           <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-4">Signal summary</p>
           <div className="flex items-start gap-5">
-            <div className="w-16 h-16 flex-shrink-0 rounded-2xl bg-white/10 flex items-center justify-center text-[28px] font-black">
+            <div
+              className="w-16 h-16 flex-shrink-0 rounded-2xl bg-white/10 flex items-center justify-center text-[28px] font-black"
+              aria-hidden="true"
+            >
               {profile.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1">
               <h1 className="text-[20px] font-black leading-tight">{profile.name}</h1>
               {profile.headline && <p className="text-white/55 text-[13px] mt-1">{profile.headline}</p>}
               <div className="flex flex-wrap gap-3 mt-2 text-[11px] text-white/40">
-                {profile.location && <span>📍 {profile.location}</span>}
-                {profile.field && <span>💼 {profile.field}</span>}
+                {profile.location && <span><span aria-hidden="true">📍</span> {profile.location}</span>}
+                {profile.field   && <span><span aria-hidden="true">💼</span> {profile.field}</span>}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mt-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
             {[
               { label: "Portfolio entries", value: entries.length },
-              { label: "Skills extracted", value: allSkills.length },
-              { label: "Employer signals", value: count },
+              { label: "Skills extracted",  value: allSkills.length },
+              { label: "Employer signals",  value: count },
             ].map(({ label, value }) => (
               <div key={label} className="bg-white/8 rounded-xl p-3 text-center">
                 <div className="text-[22px] font-black">{value}</div>
@@ -136,7 +128,7 @@ export default function TalentProfileClient({
 
         {/* Bio */}
         {profile.bio && (
-          <div className="bg-white rounded-xl shadow-[0_2px_16px_rgba(0,0,0,0.05)] p-5">
+          <div className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5">
             <h2 className="text-[11px] font-black uppercase tracking-widest text-[#424242]/40 mb-3 border-b border-[#424242]/8 pb-2">
               About
             </h2>
@@ -146,7 +138,7 @@ export default function TalentProfileClient({
 
         {/* Skills from entries */}
         {allSkills.length > 0 && (
-          <div className="bg-white rounded-xl shadow-[0_2px_16px_rgba(0,0,0,0.05)] p-5">
+          <div className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5">
             <h2 className="text-[11px] font-black uppercase tracking-widest text-[#424242]/40 mb-4 border-b border-[#424242]/8 pb-2">
               Skills from portfolio
             </h2>
@@ -167,12 +159,12 @@ export default function TalentProfileClient({
           </h2>
           <div className="space-y-4">
             {entries.map((entry) => (
-              <div key={entry.id} className="bg-white rounded-xl shadow-[0_2px_16px_rgba(0,0,0,0.05)] p-5">
+              <div key={entry.id} className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${CATEGORY_COLOURS[entry.category] ?? CATEGORY_COLOURS.Other}`}>
                     {entry.category}
                   </span>
-                  <span className="text-[10px] text-[#424242]/30">{entry.entry_date}</span>
+                  <span className="text-[10px] text-[#424242]/40">{formatDate(entry.entry_date)}</span>
                 </div>
                 <p className="text-[13px] text-[#424242]/70 leading-relaxed">{entry.polished_entry}</p>
                 {entry.skills.length > 0 && (
@@ -188,7 +180,7 @@ export default function TalentProfileClient({
             ))}
           </div>
         </section>
-      </div>
+      </main>
     </div>
   );
 }

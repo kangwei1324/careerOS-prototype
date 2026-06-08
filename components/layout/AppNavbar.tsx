@@ -1,0 +1,141 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores/authStore";
+
+// ── Nav link helper ───────────────────────────────────────────────
+
+function NavLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const isActive = pathname === href || pathname.startsWith(href + "/");
+
+  return (
+    <Link
+      href={href}
+      className={`text-[12px] font-bold px-3 py-1.5 rounded-full transition-all ${
+        isActive
+          ? "text-[#424242] bg-white shadow-sm"
+          : "text-[#424242]/60 hover:text-[#424242] hover:bg-white/70"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+// ── AppNavbar ─────────────────────────────────────────────────────
+
+export default function AppNavbar() {
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
+
+  const candidateLinks = [
+    { href: "/portfolio/log",    label: "Log" },
+    { href: "/portfolio/manage", label: "Portfolio" },
+    { href: "/explore",          label: "Explore" },
+  ];
+
+  const employerLinks = [
+    { href: "/talent", label: "Browse Talent" },
+  ];
+
+  const navLinks = user?.role === "candidate" ? candidateLinks : employerLinks;
+
+  return (
+    <header>
+      <nav
+        role="navigation"
+        aria-label="Main navigation"
+        className="sticky top-0 z-40 bg-[#f7f7f7]/90 backdrop-blur border-b border-[#424242]/8 px-6 py-3.5"
+      >
+        <div className="flex justify-between items-center">
+          {/* Logo */}
+          <Link
+            href="/dashboard"
+            className="text-xl font-black tracking-tight text-[#424242]"
+          >
+            Career<span className="text-[#ffc000]">OS.</span>
+          </Link>
+
+          {/* Desktop nav */}
+          <div className="hidden sm:flex items-center gap-1">
+            {user && navLinks.map((link) => (
+              <NavLink key={link.href} href={link.href}>
+                {link.label}
+              </NavLink>
+            ))}
+            {user && (
+              <button
+                onClick={handleLogout}
+                className="text-[12px] font-bold text-[#424242]/45 hover:text-[#424242] ml-2 transition-colors px-3 py-1.5"
+              >
+                Sign out
+              </button>
+            )}
+            {!user && (
+              <>
+                <Link
+                  href="/auth/signin"
+                  className="text-[12px] font-bold text-[#424242]/60 hover:text-[#424242] px-3 py-1.5 transition-colors"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="text-[12px] font-black bg-[#424242] text-white px-4 py-2 rounded-full hover:bg-[#333] transition-all"
+                >
+                  Get started
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="sm:hidden p-2 rounded-lg hover:bg-[#424242]/8 transition-colors"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+          >
+            <span className="block w-5 h-0.5 bg-[#424242] mb-1 transition-all" />
+            <span className="block w-5 h-0.5 bg-[#424242] mb-1 transition-all" />
+            <span className="block w-5 h-0.5 bg-[#424242] transition-all" />
+          </button>
+        </div>
+
+        {/* Mobile dropdown */}
+        {menuOpen && (
+          <div className="sm:hidden mt-3 pb-2 border-t border-[#424242]/8 pt-3 flex flex-col gap-1 animate-fade-in">
+            {user && navLinks.map((link) => (
+              <NavLink key={link.href} href={link.href}>
+                {link.label}
+              </NavLink>
+            ))}
+            {user && (
+              <button
+                onClick={handleLogout}
+                className="text-left text-[12px] font-bold text-[#424242]/45 hover:text-[#424242] px-3 py-1.5 transition-colors"
+              >
+                Sign out
+              </button>
+            )}
+          </div>
+        )}
+      </nav>
+    </header>
+  );
+}

@@ -4,22 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
-
-interface Candidate {
-  id: number;
-  username: string;
-  name: string;
-  headline: string;
-  location: string;
-  field: string;
-  skills: string[];
-  bio: string;
-  entry_count: number;
-}
+import AppNavbar from "@/components/layout/AppNavbar";
+import { useToast } from "@/components/ui/Toast";
+import type { Candidate } from "@/lib/types";
 
 export default function TalentPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { showToast } = useToast();
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +19,7 @@ export default function TalentPage() {
 
   useEffect(() => {
     if (!user) { router.push("/auth/signin"); return; }
+    if (user.role !== "employer") { router.push("/dashboard"); return; }
     fetchCandidates();
   }, [user]);
 
@@ -36,10 +29,16 @@ export default function TalentPage() {
     if (f.field) params.set("field", f.field);
     if (f.location) params.set("location", f.location);
     if (f.skills) params.set("skills", f.skills);
-    const res = await fetch(`/api/talent?${params.toString()}`);
-    const data = await res.json();
-    setCandidates(data);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/talent?${params.toString()}`);
+      const data = await res.json();
+      setCandidates(Array.isArray(data) ? data : []);
+    } catch {
+      showToast("Failed to load candidates.", "error");
+      setCandidates([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const update = (k: string, v: string) => setFilters((f) => ({ ...f, [k]: v }));
@@ -53,33 +52,26 @@ export default function TalentPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
-      <nav className="sticky top-0 z-40 bg-[#f7f7f7]/90 backdrop-blur border-b border-[#424242]/8 px-6 py-3.5 flex justify-between items-center">
-        <Link href="/dashboard" className="text-xl font-black tracking-tight text-[#424242]">
-          Career<span className="text-[#ffc000]">OS.</span>
-        </Link>
-        <Link href="/dashboard" className="text-[12px] font-bold text-[#424242]/50 hover:text-[#424242] transition-colors">
-          ← Dashboard
-        </Link>
-      </nav>
-
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <AppNavbar />
+      <main className="max-w-5xl mx-auto px-6 py-10">
         <h1 className="text-[28px] font-black text-[#424242] mb-1">Talent pool</h1>
-        <p className="text-[13px] text-[#424242]/45 mb-8">
+        <p className="text-[13px] text-[#424242]/50 mb-8">
           Browse candidates by what they actually do — not what they put in a headline.
         </p>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-[0_2px_16px_rgba(0,0,0,0.05)] p-5 mb-8 flex flex-wrap gap-4 items-end">
+        <div className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5 mb-8 flex flex-wrap gap-4 items-end">
           {[
-            { label: "Field", key: "field", placeholder: "Engineering, Design…" },
-            { label: "Location", key: "location", placeholder: "Kuala Lumpur…" },
-            { label: "Skills", key: "skills", placeholder: "React, Python (comma-separated)" },
-          ].map(({ label, key, placeholder }) => (
+            { label: "Field",    key: "field",    placeholder: "Engineering, Design…",             id: "filter-field" },
+            { label: "Location", key: "location", placeholder: "Kuala Lumpur…",                    id: "filter-location" },
+            { label: "Skills",   key: "skills",   placeholder: "React, Python (comma-separated)",  id: "filter-skills" },
+          ].map(({ label, key, placeholder, id }) => (
             <div key={key} className="flex-1 min-w-[160px]">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#424242]/40 mb-1.5">
+              <label htmlFor={id} className="block text-[10px] font-black uppercase tracking-widest text-[#424242]/40 mb-1.5">
                 {label}
               </label>
               <input
+                id={id}
                 value={(filters as any)[key]}
                 onChange={(e) => update(key, e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && applyFilters()}
@@ -104,7 +96,7 @@ export default function TalentPage() {
           </div>
         </div>
 
-        {/* Results */}
+        {/* Results count */}
         <p className="text-[11px] font-bold uppercase tracking-widest text-[#424242]/40 mb-4">
           {loading ? "Loading…" : `${candidates.length} candidate${candidates.length !== 1 ? "s" : ""}`}
         </p>
@@ -116,10 +108,10 @@ export default function TalentPage() {
         )}
 
         {!loading && candidates.length === 0 && (
-          <div className="text-center py-20 bg-white rounded-xl shadow-[0_2px_16px_rgba(0,0,0,0.05)]">
-            <p className="text-3xl mb-3">🔍</p>
+          <div className="text-center py-20 bg-white rounded-xl shadow-[var(--card-shadow)]">
+            <p className="text-3xl mb-3" aria-hidden="true">🔍</p>
             <p className="text-[15px] font-black text-[#424242] mb-1">No candidates found</p>
-            <p className="text-[13px] text-[#424242]/45">Try different filters or clear them</p>
+            <p className="text-[13px] text-[#424242]/50">Try different filters or clear them</p>
           </div>
         )}
 
@@ -128,20 +120,20 @@ export default function TalentPage() {
             <Link
               key={c.id}
               href={`/talent/${c.username}`}
-              className="bg-white rounded-xl shadow-[0_2px_16px_rgba(0,0,0,0.05)] p-5 hover:shadow-[0_4px_24px_rgba(0,0,0,0.09)] transition-all group block"
+              className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5 hover:shadow-[var(--card-shadow-hover)] transition-all group block"
             >
               <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#424242] flex items-center justify-center text-white text-[14px] font-black">
+                <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#424242] flex items-center justify-center text-white text-[14px] font-black" aria-hidden="true">
                   {c.name ? c.name.charAt(0) : c.username.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-[13px] font-black text-[#424242] leading-tight truncate">{c.name || c.username}</h3>
-                  {c.headline && <p className="text-[11px] text-[#424242]/45 truncate mt-0.5">{c.headline}</p>}
+                  <h2 className="text-[13px] font-black text-[#424242] leading-tight truncate">{c.name || c.username}</h2>
+                  {c.headline && <p className="text-[11px] text-[#424242]/50 truncate mt-0.5">{c.headline}</p>}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1 mb-3 text-[10px] text-[#424242]/45">
-                {c.location && <span>📍 {c.location}</span>}
+              <div className="flex flex-wrap gap-1 mb-3 text-[10px] text-[#424242]/50">
+                {c.location && <span aria-label={`Location: ${c.location}`}>📍 {c.location}</span>}
                 {c.field && <span>• {c.field}</span>}
               </div>
 
@@ -152,18 +144,18 @@ export default function TalentPage() {
                   </span>
                 ))}
                 {c.skills.length > 4 && (
-                  <span className="text-[10px] text-[#424242]/35">+{c.skills.length - 4}</span>
+                  <span className="text-[10px] text-[#424242]/40">+{c.skills.length - 4}</span>
                 )}
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-[10px] text-[#424242]/30">{c.entry_count} portfolio {c.entry_count === 1 ? "entry" : "entries"}</span>
-                <span className="text-[11px] font-bold text-[#ffc000] group-hover:underline">View profile →</span>
+                <span className="text-[10px] text-[#424242]/40">{c.entry_count} portfolio {c.entry_count === 1 ? "entry" : "entries"}</span>
+                <span className="text-[11px] font-bold text-[#b38600] group-hover:underline">View profile →</span>
               </div>
             </Link>
           ))}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
