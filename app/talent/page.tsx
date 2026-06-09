@@ -242,7 +242,7 @@ export default function TalentPage() {
 
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {c.skills.slice(0, 4).map((s) => (
-                  <span key={s} className="bg-[#ffc000]/15 text-[#424242] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                  <span key={s} className="bg-[#ffc000]/15 text-[#424242] text-[10px] font-bold px-2.5 py-1 rounded-full">
                     {s}
                   </span>
                 ))}

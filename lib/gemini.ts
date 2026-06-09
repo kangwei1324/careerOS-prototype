@@ -69,6 +69,117 @@ Respond ONLY in this exact JSON format, no markdown:
   }
 }
 
+// ── Smart classification + generation ────────────────────────────────
+export interface ClassifiedEntry {
+  section: "work_experience" | "education" | "honours_awards" | "activity_log";
+  entry: string;
+  skills: string[];
+  structured: {
+    title?: string;
+    company?: string;
+    institution?: string;
+    degree?: string;
+    issuer?: string;
+    start_date?: string;
+    end_date?: string | null;
+    award_date?: string;
+    category?: string;
+  };
+}
+
+export async function classifyAndGenerateEntry(
+  rawLog: string,
+  date: string,
+  sectionHint: "auto" | "work_experience" | "education" | "honours_awards" | "activity_log"
+): Promise<ClassifiedEntry> {
+  const isAuto = sectionHint === "auto";
+
+  const structuredGuide: Record<string, string> = {
+    work_experience: `"title" (job title), "company", "start_date" (YYYY-MM), "end_date" (YYYY-MM or null if ongoing)`,
+    education: `"institution", "degree", "start_date" (YYYY-MM), "end_date" (YYYY-MM or null if ongoing)`,
+    honours_awards: `"title" (award name), "issuer" (organisation), "award_date" (YYYY-MM)`,
+    activity_log: `"category" (one of: Technical, Leadership, Communication, Creative, Other)`,
+  };
+
+  const prompt = isAuto
+    ? `You are a career portfolio AI. Read this activity log and do 4 things:
+
+1. Classify it into exactly one section:
+   - "work_experience": job tasks, work projects, internships, freelance, job roles
+   - "education": degrees, courses, certifications, workshops, academic achievements
+   - "honours_awards": awards won, competitions placed, scholarships, official recognition
+   - "activity_log": everything else — personal projects, volunteering, extracurriculars
+
+2. Extract section-specific structured fields. Infer dates from context; fall back to reference date.
+   Dates MUST be YYYY-MM format.
+
+3. Write a polished 2-3 sentence professional portfolio narrative starting with an action verb.
+
+4. Extract specific skills demonstrated (e.g. "React", "stakeholder management", "data analysis").
+
+Activity log: """${rawLog}"""
+Reference date: ${date}
+
+Respond ONLY in valid JSON with no markdown fences:
+{
+  "section": "work_experience"|"education"|"honours_awards"|"activity_log",
+  "entry": "polished narrative",
+  "skills": ["skill1", "skill2"],
+  "structured": {
+    "title": "(work_experience/honours_awards only)",
+    "company": "(work_experience only)",
+    "institution": "(education only)",
+    "degree": "(education only)",
+    "issuer": "(honours_awards only)",
+    "start_date": "YYYY-MM (work_experience/education only)",
+    "end_date": "YYYY-MM or null (work_experience/education only)",
+    "award_date": "YYYY-MM (honours_awards only)",
+    "category": "Technical|Leadership|Communication|Creative|Other (activity_log only)"
+  }
+}`
+    : `You are a career portfolio AI. The user logged this activity and wants it saved as ${sectionHint.replace(/_/g, " ")}.
+
+Activity log: """${rawLog}"""
+Reference date: ${date}
+
+Extract these structured fields: ${structuredGuide[sectionHint]}
+Dates must be YYYY-MM format. Infer from context or use reference date.
+
+Also write a polished 2-3 sentence portfolio narrative starting with an action verb, and extract specific skills.
+
+Respond ONLY in valid JSON with no markdown fences:
+{
+  "section": "${sectionHint}",
+  "entry": "polished narrative",
+  "skills": ["skill1", "skill2"],
+  "structured": { ... }
+}`;
+
+  const raw = await generate(prompt);
+  console.log("[gemini/classifyAndGenerateEntry] raw:", raw.slice(0, 300));
+  try {
+    const cleaned = raw
+      .replace(/^```[a-zA-Z]*\s*/m, "")
+      .replace(/```\s*$/m, "")
+      .trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      section: parsed.section ?? (isAuto ? "activity_log" : sectionHint),
+      entry: parsed.entry ?? "",
+      skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+      structured: parsed.structured ?? {},
+    };
+  } catch (e) {
+    console.error("[gemini/classifyAndGenerateEntry] parse failed:", e, "raw:", raw);
+    return {
+      section: isAuto ? "activity_log" : (sectionHint as ClassifiedEntry["section"]),
+      entry: raw,
+      skills: [],
+      structured: {},
+    };
+  }
+}
+
 // ── Bio generation ───────────────────────────────────────────────
 export async function generateBio(
   name: string,

@@ -8,6 +8,30 @@ export interface PortfolioEntry {
   skills: string[];
 }
 
+export interface WorkExperience {
+  id: number;
+  title: string;
+  company: string;
+  start_date: string;
+  end_date: string | null;
+  description: string;
+}
+
+export interface Education {
+  id: number;
+  institution: string;
+  degree: string;
+  start_date: string;
+  end_date: string | null;
+}
+
+export interface HonourAward {
+  id: number;
+  title: string;
+  issuer: string;
+  award_date: string;
+}
+
 export interface Signal {
   company_name: string;
   created_at: string;

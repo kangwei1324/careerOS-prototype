@@ -38,7 +38,7 @@ function CandidateDashboard({ username }: { username: string }) {
 
   const completeness = profile
     ? [profile.name, profile.headline, profile.location, profile.field, (profile.skills || []).length > 0]
-        .filter(Boolean).length * 20
+      .filter(Boolean).length * 20
     : 0;
 
   if (loading) {
@@ -64,10 +64,10 @@ function CandidateDashboard({ username }: { username: string }) {
           <p className="text-white/40 text-[13px] mt-1">{entries.length} portfolio {entries.length === 1 ? "entry" : "entries"} logged</p>
         </div>
         <Link
-          href="/portfolio/log"
+          href="/profile/edit"
           className="bg-[#ffc000] text-[#424242] text-[13px] font-black px-5 py-2.5 rounded-full hover:bg-[#e6ac00] transition-all whitespace-nowrap flex-shrink-0"
         >
-          + Log activity
+          ✏️ Edit profile
         </Link>
       </div>
 
@@ -75,8 +75,8 @@ function CandidateDashboard({ username }: { username: string }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "Portfolio entries", value: entries.length, icon: "📝" },
-          { label: "Skills extracted",  value: allSkills.length, icon: "⚡" },
-          { label: "Employer signals",  value: signals.count,   icon: "👀" },
+          { label: "Skills extracted", value: allSkills.length, icon: "⚡" },
+          { label: "Employer signals", value: signals.count, icon: "👀" },
         ].map(({ label, value, icon }) => (
           <div key={label} className="bg-white rounded-xl p-5 shadow-[var(--card-shadow)] text-center">
             <div className="text-2xl mb-2" aria-hidden="true">{icon}</div>
@@ -86,28 +86,28 @@ function CandidateDashboard({ username }: { username: string }) {
         ))}
       </div>
 
-      {/* Profile completeness */}
-      <div className="bg-white rounded-xl p-5 shadow-[var(--card-shadow)]">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50">Profile completeness</h2>
-          <span className="text-[13px] font-black text-[#424242]">{completeness}%</span>
-        </div>
-        <div className="h-2 bg-[#424242]/8 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#ffc000] rounded-full transition-all"
-            style={{ width: `${completeness}%` }}
-            role="progressbar"
-            aria-valuenow={completeness}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
-        </div>
-        {completeness < 100 && (
+      {/* Profile completeness — hidden after 100% */}
+      {completeness < 100 && (
+        <div className="bg-white rounded-xl p-5 shadow-[var(--card-shadow)]">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50">Profile completeness</h2>
+            <span className="text-[13px] font-black text-[#424242]">{completeness}%</span>
+          </div>
+          <div className="h-2 bg-[#424242]/8 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#ffc000] rounded-full transition-all"
+              style={{ width: `${completeness}%` }}
+              role="progressbar"
+              aria-valuenow={completeness}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
+          </div>
           <Link href="/onboarding" className="text-[11px] text-[#b38600] font-bold mt-2 inline-block hover:underline">
             Complete your profile →
           </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Employer signals */}
       {signals.count > 0 && (
