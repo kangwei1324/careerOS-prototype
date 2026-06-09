@@ -13,12 +13,19 @@ export async function GET() {
     const profile = db
       .prepare("SELECT * FROM candidate_profiles WHERE user_id = ?")
       .get(session.userId) as any;
-    return NextResponse.json({ ...profile, skills: JSON.parse(profile?.skills_json || "[]") });
+    return NextResponse.json({
+      ...profile,
+      skills: JSON.parse(profile?.skills_json || "[]"),
+      socials: JSON.parse(profile?.socials_json || "{}")
+    });
   } else {
     const profile = db
       .prepare("SELECT * FROM employer_profiles WHERE user_id = ?")
-      .get(session.userId);
-    return NextResponse.json(profile);
+      .get(session.userId) as any;
+    return NextResponse.json({
+      ...profile,
+      socials: JSON.parse(profile?.socials_json || "{}")
+    });
   }
 }
 
@@ -31,11 +38,11 @@ export async function POST(req: NextRequest) {
   const db = getDb();
 
   if (session.role === "candidate") {
-    const { name, headline, location, field, experience_years, skills } = body;
+    const { name, headline, location, field, experience_years, skills, socials } = body;
     db.prepare(
       `UPDATE candidate_profiles
        SET name = ?, headline = ?, location = ?, field = ?,
-           experience_years = ?, skills_json = ?, updated_at = datetime('now')
+           experience_years = ?, skills_json = ?, socials_json = ?, updated_at = datetime('now')
        WHERE user_id = ?`
     ).run(
       name ?? "",
@@ -44,15 +51,23 @@ export async function POST(req: NextRequest) {
       field ?? "",
       experience_years ?? 0,
       JSON.stringify(skills ?? []),
+      JSON.stringify(socials ?? {}),
       session.userId
     );
   } else {
-    const { company_name, industry, location, description } = body;
+    const { company_name, industry, location, description, socials } = body;
     db.prepare(
       `UPDATE employer_profiles
-       SET company_name = ?, industry = ?, location = ?, description = ?, updated_at = datetime('now')
+       SET company_name = ?, industry = ?, location = ?, description = ?, socials_json = ?, updated_at = datetime('now')
        WHERE user_id = ?`
-    ).run(company_name ?? "", industry ?? "", location ?? "", description ?? "", session.userId);
+    ).run(
+      company_name ?? "",
+      industry ?? "",
+      location ?? "",
+      description ?? "",
+      JSON.stringify(socials ?? {}),
+      session.userId
+    );
   }
 
   return NextResponse.json({ ok: true });

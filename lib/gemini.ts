@@ -149,3 +149,44 @@ Respond ONLY in this exact JSON format, no markdown:
     return [];
   }
 }
+
+export interface SuggestionResult {
+  id: number;
+  reason: string;
+}
+
+export async function suggestCandidates(
+  description: string,
+  candidates: Array<{ id: number; name: string; headline: string; field: string; skills: string[]; bio: string; portfolio_summary: string }>
+): Promise<SuggestionResult[]> {
+  if (candidates.length === 0) return [];
+  const prompt = `You are an expert technical recruiter and talent matching assistant for CareerOS.
+An employer has provided the following requirements for what they are looking for in candidates:
+"${description}"
+
+Here is a list of candidate profiles currently in the platform, including their name, headline, skills, and a summary of their recent portfolio accomplishments:
+${JSON.stringify(candidates, null, 2)}
+
+Identify up to 3 candidates who best match the employer's requirements.
+For each selected candidate, write a concise, professional 1-sentence justification (under "reason") explaining why they are a strong fit based on their specific skills or portfolio entries.
+
+Respond ONLY with a valid JSON array of objects matching this exact format, with no markdown formatting:
+[
+  {
+    "id": <candidate_id>,
+    "reason": "..."
+  }
+]`;
+
+  const raw = await generate(prompt);
+  try {
+    const cleaned = raw
+      .replace(/^```[a-zA-Z]*\s*/m, "")
+      .replace(/```\s*$/m, "")
+      .trim();
+    return JSON.parse(cleaned) as SuggestionResult[];
+  } catch (e) {
+    console.error("[gemini/suggestCandidates] parse failed:", e, "raw was:", raw);
+    return [];
+  }
+}

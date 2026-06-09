@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import Footer from "@/components/layout/Footer";
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const setUser = useAuthStore((s) => s.setUser);
@@ -120,5 +120,17 @@ export default function SignUpPage() {
       </div>
       <Footer />
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#ffc000] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <SignUpForm />
+    </Suspense>
   );
 }

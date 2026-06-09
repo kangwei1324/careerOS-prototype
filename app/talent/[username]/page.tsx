@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { notFound } from "next/navigation";
+import { getSession } from "@/lib/auth";
 import TalentProfileClient from "./TalentProfileClient";
 
 export default async function TalentProfilePage({
@@ -18,7 +19,7 @@ export default async function TalentProfilePage({
 
   const profile = db
     .prepare(
-      "SELECT name, headline, location, field, bio, skills_json FROM candidate_profiles WHERE user_id = ?"
+      "SELECT name, headline, location, field, bio, skills_json, socials_json FROM candidate_profiles WHERE user_id = ?"
     )
     .get(user.id) as any;
 
@@ -37,6 +38,17 @@ export default async function TalentProfilePage({
     )
     .get(user.id) as { count: number };
 
+  const session = await getSession();
+  let hasInterested = false;
+  if (session && session.role === "employer") {
+    const interestRecord = db
+      .prepare(
+        "SELECT 1 FROM employer_interests WHERE employer_id = ? AND candidate_id = ?"
+      )
+      .get(session.userId, user.id);
+    hasInterested = !!interestRecord;
+  }
+
   return (
     <TalentProfileClient
       candidateId={user.id}
@@ -48,9 +60,11 @@ export default async function TalentProfilePage({
         field: profile?.field ?? "",
         bio: profile?.bio ?? "",
         skills: JSON.parse(profile?.skills_json ?? "[]"),
+        socials: JSON.parse(profile?.socials_json ?? "{}"),
       }}
       entries={entries.map((e) => ({ ...e, skills: JSON.parse(e.skills_json ?? "[]") }))}
       interestCount={interests.count}
+      initialInterested={hasInterested}
     />
   );
 }

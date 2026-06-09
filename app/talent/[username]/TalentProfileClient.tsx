@@ -15,6 +15,11 @@ interface Profile {
   field: string;
   bio: string;
   skills: string[];
+  socials?: {
+    website?: string;
+    linkedin?: string;
+    github?: string;
+  };
 }
 
 export default function TalentProfileClient({
@@ -23,37 +28,55 @@ export default function TalentProfileClient({
   profile,
   entries,
   interestCount,
+  initialInterested,
 }: {
   candidateId: number;
   username: string;
   profile: Profile;
   entries: PortfolioEntry[];
   interestCount: number;
+  initialInterested: boolean;
 }) {
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToast();
-  const [interested, setInterested] = useState(false);
+  const [interested, setInterested] = useState(initialInterested);
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState(interestCount);
 
   const allSkills = Array.from(new Set(entries.flatMap((e) => e.skills)));
 
-  const expressInterest = async () => {
+  const toggleInterest = async () => {
     if (!user || user.role !== "employer") return;
     setLoading(true);
     try {
-      const res = await fetch("/api/interest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidateId }),
-      });
-      const data = await res.json();
-      // Only increment if it was a new signal (not a duplicate)
-      if (data.inserted) setCount((c) => c + 1);
-      setInterested(true);
-      showToast("Interest expressed ✓", "success");
+      if (interested) {
+        // Undo interest (DELETE)
+        const res = await fetch("/api/interest", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ candidateId }),
+        });
+        if (res.ok) {
+          setCount((c) => Math.max(0, c - 1));
+          setInterested(false);
+          showToast("Interest removed from candidate shortlist.", "success");
+        } else {
+          throw new Error();
+        }
+      } else {
+        // Express interest (POST)
+        const res = await fetch("/api/interest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ candidateId }),
+        });
+        const data = await res.json();
+        if (data.inserted) setCount((c) => c + 1);
+        setInterested(true);
+        showToast("Candidate added to your shortlist ✓", "success");
+      }
     } catch {
-      showToast("Failed to send signal. Try again.", "error");
+      showToast("Failed to update interest. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -64,8 +87,8 @@ export default function TalentProfileClient({
       <AppNavbar />
 
       <main className="max-w-2xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
-        {/* Signal summary card */}
-        <div className="bg-[#424242] rounded-2xl p-6 text-white">
+        {/* Profile Card */}
+        <div className="bg-[#424242] rounded-2xl p-6 text-white shadow-xl">
           <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-4">Signal summary</p>
           <div className="flex items-start gap-5">
             <div
@@ -74,15 +97,51 @@ export default function TalentProfileClient({
             >
               {profile.name.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h1 className="text-[20px] font-black leading-tight">{profile.name}</h1>
-              {profile.headline && <p className="text-white/55 text-[13px] mt-1">{profile.headline}</p>}
+              {profile.headline && <p className="text-white/55 text-[13px] mt-1 leading-snug">{profile.headline}</p>}
               <div className="flex flex-wrap gap-3 mt-2 text-[11px] text-white/40">
-                {profile.location && <span><span aria-hidden="true">📍</span> {profile.location}</span>}
-                {profile.field   && <span><span aria-hidden="true">💼</span> {profile.field}</span>}
+                {profile.location && <span>📍 {profile.location}</span>}
+                {profile.field   && <span>💼 {profile.field}</span>}
               </div>
             </div>
           </div>
+
+          {/* Social Badges */}
+          {profile.socials && (profile.socials.website || profile.socials.linkedin || profile.socials.github) && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/10">
+              {profile.socials.website && (
+                <a
+                  href={profile.socials.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/75 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+                >
+                  <span>🔗</span> Website
+                </a>
+              )}
+              {profile.socials.linkedin && (
+                <a
+                  href={profile.socials.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/75 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+                >
+                  <span>💼</span> LinkedIn
+                </a>
+              )}
+              {profile.socials.github && (
+                <a
+                  href={profile.socials.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/75 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+                >
+                  <span>🐙</span> GitHub
+                </a>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
             {[
@@ -97,7 +156,7 @@ export default function TalentProfileClient({
             ))}
           </div>
 
-          {/* Top skills */}
+          {/* Key skills */}
           {profile.skills.length > 0 && (
             <div className="mt-5">
               <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">Key skills</p>
@@ -111,18 +170,18 @@ export default function TalentProfileClient({
             </div>
           )}
 
-          {/* Express interest */}
+          {/* Shortlist Toggle Button */}
           {user?.role === "employer" && (
             <button
-              onClick={expressInterest}
-              disabled={loading || interested}
-              className={`w-full mt-5 text-[14px] font-black py-3 rounded-xl transition-all ${
+              onClick={toggleInterest}
+              disabled={loading}
+              className={`w-full mt-5 text-[14px] font-black py-3 rounded-xl transition-all active:scale-95 ${
                 interested
-                  ? "bg-white/10 text-white/50 cursor-default"
-                  : "bg-[#ffc000] text-[#424242] hover:bg-[#e6ac00] active:scale-95"
+                  ? "bg-white/20 hover:bg-white/30 text-white"
+                  : "bg-[#ffc000] text-[#424242] hover:bg-[#e6ac00]"
               }`}
             >
-              {interested ? "✓ Interest expressed" : loading ? "Sending…" : "Express interest →"}
+              {interested ? "⭐ Shortlisted (Click to remove)" : loading ? "Updating..." : "Shortlist candidate →"}
             </button>
           )}
         </div>
@@ -153,7 +212,7 @@ export default function TalentProfileClient({
           </div>
         )}
 
-        {/* Portfolio story */}
+        {/* Portfolio timeline */}
         <section>
           <h2 className="text-[11px] font-black uppercase tracking-widest text-[#424242]/40 mb-4 border-b border-[#424242]/8 pb-2">
             Portfolio ({entries.length} {entries.length === 1 ? "entry" : "entries"})

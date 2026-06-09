@@ -19,6 +19,11 @@ interface Profile {
   bio: string;
   skills: string[];
   userId: number;
+  socials?: {
+    website?: string;
+    linkedin?: string;
+    github?: string;
+  };
 }
 
 // Server component — fetch data at request time
@@ -37,16 +42,15 @@ export default async function PublicPortfolioPage({
   if (!user) notFound();
 
   const profileRow = db
-    .prepare("SELECT name, headline, location, field, bio, skills_json FROM candidate_profiles WHERE user_id = ?")
+    .prepare("SELECT name, headline, location, field, bio, skills_json, socials_json FROM candidate_profiles WHERE user_id = ?")
     .get(user.id) as any;
 
   const entries = db
-    .prepare(
-      `SELECT id, polished_entry, category, entry_date, skills_json
+    .prepare
+      (`SELECT id, polished_entry, category, entry_date, skills_json
        FROM portfolio_entries
        WHERE user_id = ?
-       ORDER BY entry_date DESC, created_at DESC`
-    )
+       ORDER BY entry_date DESC, created_at DESC`)
     .all(user.id) as any[];
 
   const profile: Profile = {
@@ -56,6 +60,7 @@ export default async function PublicPortfolioPage({
     field: profileRow?.field ?? "",
     bio: profileRow?.bio ?? "",
     skills: JSON.parse(profileRow?.skills_json ?? "[]"),
+    socials: JSON.parse(profileRow?.socials_json ?? "{}"),
     userId: user.id,
   };
 

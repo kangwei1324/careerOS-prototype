@@ -210,15 +210,67 @@ function EmployerDashboard() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [shortlist, setShortlist] = useState<any[]>([]);
+  const [loadingShortlist, setLoadingShortlist] = useState(true);
+
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
   useEffect(() => {
     fetch("/api/onboarding")
       .then((r) => r.json())
       .then((p) => {
         setProfile(p);
         setDescription(p?.description ?? "");
+        if (p?.description) {
+          fetchSuggestions();
+        }
       })
       .catch(() => null);
+
+    fetchShortlist();
   }, []);
+
+  const fetchShortlist = async () => {
+    setLoadingShortlist(true);
+    try {
+      const res = await fetch("/api/employer/shortlist");
+      const data = await res.json();
+      setShortlist(Array.isArray(data) ? data : []);
+    } catch {
+      setShortlist([]);
+    } finally {
+      setLoadingShortlist(false);
+    }
+  };
+
+  const fetchSuggestions = async () => {
+    setLoadingSuggestions(true);
+    try {
+      const res = await fetch("/api/employer/suggestions");
+      const data = await res.json();
+      setSuggestions(Array.isArray(data) ? data : []);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const removeShortlist = async (candidateId: number) => {
+    try {
+      const res = await fetch("/api/interest", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateId }),
+      });
+      if (res.ok) {
+        setShortlist((list) => list.filter((c) => c.id !== candidateId));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const saveDescription = async () => {
     if (!profile) return;
@@ -233,10 +285,13 @@ function EmployerDashboard() {
           industry: profile.industry,
           location: profile.location,
           description,
+          socials: profile.socials || {},
         }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+      // Refresh AI suggestions when requirement changes
+      fetchSuggestions();
     } finally {
       setSaving(false);
     }
@@ -244,36 +299,81 @@ function EmployerDashboard() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
+      {/* Banner */}
       <div className="bg-[#424242] rounded-2xl p-6">
-        <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Employer dashboard</p>
-        <h1 className="text-white text-[22px] font-black mb-3">
-          {profile?.company_name || "Your company"} 🏢
-        </h1>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Employer dashboard</p>
+            <h1 className="text-white text-[22px] font-black">
+              {profile?.company_name || "Your company"} 🏢
+            </h1>
+          </div>
+          <Link
+            href="/onboarding"
+            className="bg-white/10 hover:bg-white/20 text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all whitespace-nowrap"
+          >
+            Edit company profile
+          </Link>
+        </div>
+
+        <div className="flex flex-wrap gap-4 mt-3 text-white/50 text-[13px]">
           {profile?.industry && (
-            <span className="flex items-center gap-1.5 text-white/55 text-[13px]">
-              <span aria-hidden="true">🏭</span> {profile.industry}
+            <span className="flex items-center gap-1">
+              <span>🏭</span> {profile.industry}
             </span>
           )}
           {profile?.location && (
-            <span className="flex items-center gap-1.5 text-white/55 text-[13px]">
-              <span aria-hidden="true">📍</span> {profile.location}
+            <span className="flex items-center gap-1">
+              <span>📍</span> {profile.location}
             </span>
           )}
-          {!profile?.industry && !profile?.location && (
-            <p className="text-white/40 text-[13px]">Find the right people before they&apos;re looking</p>
-          )}
         </div>
+
+        {/* Company Socials */}
+        {profile?.socials && (profile.socials.website || profile.socials.linkedin || profile.socials.twitter) && (
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/10">
+            {profile.socials.website && (
+              <a
+                href={profile.socials.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/70 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+              >
+                <span>🔗</span> Website
+              </a>
+            )}
+            {profile.socials.linkedin && (
+              <a
+                href={profile.socials.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/70 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+              >
+                <span>💼</span> LinkedIn
+              </a>
+            )}
+            {profile.socials.twitter && (
+              <a
+                href={profile.socials.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/70 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+              >
+                <span>🐦</span> Twitter
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       {/* What are you looking for */}
       <div className="bg-white rounded-xl p-6 shadow-[var(--card-shadow)]">
         <h2 className="text-[15px] font-black text-[#424242] mb-1">What are you looking for?</h2>
         <p className="text-[12px] text-[#424242]/40 mb-1">
-          Describe the type of candidate you want to find — skills, experience level, traits, or anything else.
+          Describe the type of candidate you want to find — skills, experience level, traits, or target projects.
         </p>
         <p className="text-[12px] text-[#424242]/40 mb-4">
-          This is saved and editable at any time — it updates the system on what candidates you are actively seeking.
+          Gemini will analyze candidate work logs and recommend matches based on real capabilities.
         </p>
         <textarea
           value={description}
@@ -292,11 +392,127 @@ function EmployerDashboard() {
             disabled={saving}
             className="bg-[#ffc000] text-[#424242] text-[13px] font-black px-5 py-2 rounded-full hover:bg-[#e6ac00] transition-all disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : "Save & Find Matches"}
           </button>
         </div>
       </div>
 
+      {/* AI Suggested Candidates */}
+      <div className="bg-white rounded-xl p-6 shadow-[var(--card-shadow)] space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">✨</span>
+          <h2 className="text-[15px] font-black text-[#424242]">AI Suggested Candidates</h2>
+        </div>
+
+        {!description.trim() ? (
+          <p className="text-[12px] text-[#424242]/40 italic">
+            Describe what you are looking for above and save to generate AI candidate matches.
+          </p>
+        ) : loadingSuggestions ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-24 skeleton rounded-xl" />
+            ))}
+          </div>
+        ) : suggestions.length === 0 ? (
+          <p className="text-[12px] text-[#424242]/40 italic">
+            No candidates matched your description. Try adjusting your target skills or experience requirements.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {suggestions.map((c) => (
+              <div key={c.id} className="border border-[#424242]/8 rounded-xl p-4 hover:border-[#ffc000]/40 transition-colors bg-white">
+                <div className="flex justify-between items-start flex-wrap gap-2">
+                  <div>
+                    <Link href={`/talent/${c.username}`} className="text-[13px] font-black text-[#424242] hover:underline">
+                      {c.name}
+                    </Link>
+                    {c.headline && <p className="text-[11px] text-[#424242]/50">{c.headline}</p>}
+                    <p className="text-[10px] text-[#424242]/40 mt-1">📍 {c.location || "N/A"} • {c.field}</p>
+                  </div>
+                  <Link
+                    href={`/talent/${c.username}`}
+                    className="text-[11px] font-bold text-[#b38600] border border-[#ffc000]/25 hover:bg-[#ffc000]/5 px-3 py-1 rounded-full"
+                  >
+                    View profile
+                  </Link>
+                </div>
+                
+                {/* AI Reason */}
+                {c.reason && (
+                  <div className="mt-3 bg-[#ffc000]/10 border-l-2 border-[#ffc000] p-2.5 rounded-r-lg text-[12px] text-[#424242]/80 leading-relaxed italic">
+                    <strong>Match Signal:</strong> {c.reason}
+                  </div>
+                )}
+
+                {/* Skills badges */}
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {c.skills.slice(0, 5).map((s: string) => (
+                    <span key={s} className="bg-[#424242]/6 text-[#424242]/60 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                      {s}
+                    </span>
+                  ))}
+                  {c.skills.length > 5 && (
+                    <span className="text-[9px] text-[#424242]/40">+{c.skills.length - 5}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Shortlisted Candidates */}
+      <div className="bg-white rounded-xl p-6 shadow-[var(--card-shadow)] space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">⭐</span>
+          <h2 className="text-[15px] font-black text-[#424242]">Shortlisted Candidates</h2>
+        </div>
+
+        {loadingShortlist ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-20 skeleton rounded-xl" />
+            ))}
+          </div>
+        ) : shortlist.length === 0 ? (
+          <div className="text-center py-6 text-[13px] text-[#424242]/40">
+            No candidates shortlisted yet. Search candidate portfolios to add some.
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-4">
+            {shortlist.map((c) => (
+              <div key={c.id} className="border border-[#424242]/8 rounded-xl p-4 flex flex-col justify-between hover:shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all bg-white">
+                <div>
+                  <div className="flex justify-between items-start gap-2">
+                    <Link href={`/talent/${c.username}`} className="text-[13px] font-black text-[#424242] hover:underline">
+                      {c.name}
+                    </Link>
+                    <button
+                      onClick={() => removeShortlist(c.id)}
+                      className="text-[#424242]/40 hover:text-red-500 text-[11px]"
+                      title="Remove from shortlist"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                  {c.headline && <p className="text-[11px] text-[#424242]/50 truncate mt-0.5">{c.headline}</p>}
+                  <p className="text-[10px] text-[#424242]/40 mt-1">📍 {c.location || "N/A"}</p>
+                </div>
+                
+                <div className="flex justify-between items-center mt-4 pt-3 border-t border-[#424242]/5">
+                  <span className="text-[10px] text-[#424242]/40">{c.entry_count} logs</span>
+                  <Link href={`/talent/${c.username}`} className="text-[11px] font-bold text-[#b38600] hover:underline">
+                    View full profile →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Discover more */}
       <div className="bg-white rounded-xl p-8 shadow-[var(--card-shadow)] text-center">
         <p className="text-3xl mb-3" aria-hidden="true">🔍</p>
         <p className="text-[15px] font-black text-[#424242] mb-1">Discover other talents yourself</p>

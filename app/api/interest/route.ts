@@ -48,3 +48,24 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ count: interests.length, employers: interests });
 }
+
+// DELETE /api/interest — employer removes interest in a candidate
+export async function DELETE(req: NextRequest) {
+  const session = await getSession();
+  if (!session || session.role !== "employer") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { candidateId } = await req.json();
+  if (!candidateId) {
+    return NextResponse.json({ error: "candidateId required" }, { status: 400 });
+  }
+
+  const db = getDb();
+  const result = db.prepare(
+    `DELETE FROM employer_interests WHERE employer_id = ? AND candidate_id = ?`
+  ).run(session.userId, candidateId);
+
+  const deleted = result.changes > 0;
+  return NextResponse.json({ ok: true, deleted });
+}

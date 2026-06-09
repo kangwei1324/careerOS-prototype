@@ -86,4 +86,16 @@ function initSchema(db: Database.Database) {
   } catch {
     // Column already exists — ignore
   }
+
+  // ── Safe migration: add socials_json if missing ──
+  try {
+    db.exec(`ALTER TABLE candidate_profiles ADD COLUMN socials_json TEXT NOT NULL DEFAULT '{}'`);
+  } catch {
+    // Column already exists — ignore
+  }
+  try {
+    db.exec(`ALTER TABLE employer_profiles ADD COLUMN socials_json TEXT NOT NULL DEFAULT '{}'`);
+  } catch {
+    // Column already exists — ignore
+  }
 }

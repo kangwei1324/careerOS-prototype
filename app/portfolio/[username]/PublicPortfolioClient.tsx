@@ -16,6 +16,11 @@ interface Profile {
   bio: string;
   skills: string[];
   userId: number;
+  socials?: {
+    website?: string;
+    linkedin?: string;
+    github?: string;
+  };
 }
 
 export default function PublicPortfolioClient({
@@ -92,7 +97,7 @@ export default function PublicPortfolioClient({
                     )}
                   </div>
                 </div>
-                {/* Copy link — moved from navbar to top-right of profile card */}
+                {/* Copy link */}
                 <button
                   onClick={copyUrl}
                   className="flex-shrink-0 text-[12px] font-bold text-[#424242]/50 border border-[#424242]/15 px-4 py-2 rounded-full hover:border-[#424242]/30 transition-all flex items-center gap-1.5"
@@ -103,8 +108,44 @@ export default function PublicPortfolioClient({
             </div>
           </div>
 
+          {/* Social Badges */}
+          {profile.socials && (profile.socials.website || profile.socials.linkedin || profile.socials.github) && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[#424242]/8">
+              {profile.socials.website && (
+                <a
+                  href={profile.socials.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#424242]/75 hover:text-[#424242] text-[11px] font-semibold flex items-center gap-1 bg-[#424242]/5 hover:bg-[#424242]/10 px-3 py-1.5 rounded-full transition-all"
+                >
+                  <span>🔗</span> Website
+                </a>
+              )}
+              {profile.socials.linkedin && (
+                <a
+                  href={profile.socials.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#424242]/75 hover:text-[#424242] text-[11px] font-semibold flex items-center gap-1 bg-[#424242]/5 hover:bg-[#424242]/10 px-3 py-1.5 rounded-full transition-all"
+                >
+                  <span>💼</span> LinkedIn
+                </a>
+              )}
+              {profile.socials.github && (
+                <a
+                  href={profile.socials.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#424242]/75 hover:text-[#424242] text-[11px] font-semibold flex items-center gap-1 bg-[#424242]/5 hover:bg-[#424242]/10 px-3 py-1.5 rounded-full transition-all"
+                >
+                  <span>🐙</span> GitHub
+                </a>
+              )}
+            </div>
+          )}
+
           {/* Bio */}
-          <div className="mt-5 pt-5 border-t border-[#424242]/8">
+          <div className="mt-4 pt-4 border-t border-[#424242]/8">
             {bio ? (
               <p className="text-[13px] text-[#424242]/70 leading-relaxed italic">{bio}</p>
             ) : (
