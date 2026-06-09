@@ -20,7 +20,12 @@ export async function GET() {
     });
   } else {
     const profile = db
-      .prepare("SELECT * FROM employer_profiles WHERE user_id = ?")
+      .prepare(`
+        SELECT ep.*, u.username
+        FROM employer_profiles ep
+        JOIN users u ON u.id = ep.user_id
+        WHERE ep.user_id = ?
+      `)
       .get(session.userId) as any;
     return NextResponse.json({
       ...profile,

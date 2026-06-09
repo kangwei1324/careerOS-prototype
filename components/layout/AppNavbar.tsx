@@ -81,12 +81,9 @@ export default function AppNavbar() {
             ))}
             {/* Company Profile — employers only */}
             {user?.role === "employer" && (
-              <button
-                className="text-[12px] font-bold px-3 py-1.5 rounded-full text-[#424242]/60 hover:text-[#424242] hover:bg-white/70 transition-all"
-                aria-label="Company Profile"
-              >
+              <NavLink href={`/company/${user.username}`}>
                 Company Profile
-              </button>
+              </NavLink>
             )}
             {user && (
               <button
@@ -137,12 +134,9 @@ export default function AppNavbar() {
             ))}
             {/* Company Profile — employers only */}
             {user?.role === "employer" && (
-              <button
-                className="text-left text-[12px] font-bold px-3 py-1.5 rounded-full text-[#424242]/60 hover:text-[#424242] hover:bg-white/70 transition-all"
-                aria-label="Company Profile"
-              >
+              <NavLink href={`/company/${user.username}`}>
                 Company Profile
-              </button>
+              </NavLink>
             )}
             {user && (
               <button

@@ -308,12 +308,14 @@ function EmployerDashboard() {
               {profile?.company_name || "Your company"} 🏢
             </h1>
           </div>
-          <Link
-            href="/onboarding"
-            className="bg-white/10 hover:bg-white/20 text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all whitespace-nowrap"
-          >
-            Edit company profile
-          </Link>
+          {profile?.username && (
+            <Link
+              href={`/company/${profile.username}`}
+              className="bg-white/10 hover:bg-white/20 text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all whitespace-nowrap"
+            >
+              View company profile →
+            </Link>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-4 mt-3 text-white/50 text-[13px]">
