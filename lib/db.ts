@@ -64,6 +64,36 @@ function initSchema(db: Database.Database) {
       updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS work_experience (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title       TEXT    NOT NULL,
+      company     TEXT    NOT NULL,
+      start_date  TEXT    NOT NULL,
+      end_date    TEXT,
+      description TEXT    NOT NULL DEFAULT '',
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS education (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      institution TEXT    NOT NULL,
+      degree      TEXT    NOT NULL,
+      start_date  TEXT    NOT NULL,
+      end_date    TEXT,
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS honours_awards (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title      TEXT    NOT NULL,
+      issuer     TEXT    NOT NULL DEFAULT '',
+      award_date TEXT    NOT NULL,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS employer_interests (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       employer_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -171,7 +171,7 @@ export default function TalentProfileClient({
                 {entry.skills.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {entry.skills.map((s) => (
-                      <span key={s} className="bg-[#424242]/6 text-[#424242]/55 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                      <span key={s} className="bg-[#424242]/8 text-[#424242]/55 text-[10px] font-bold px-2.5 py-1 rounded-full">
                         {s}
                       </span>
                     ))}
