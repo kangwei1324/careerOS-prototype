@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import AppNavbar from "@/components/layout/AppNavbar";
+import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
 import type { Candidate } from "@/lib/types";
 
@@ -156,6 +157,7 @@ export default function TalentPage() {
           ))}
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

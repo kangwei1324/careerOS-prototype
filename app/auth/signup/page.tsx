@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
+import Footer from "@/components/layout/Footer";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -40,8 +41,9 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f7f7] flex flex-col items-center justify-center px-4 py-12">
-      <Link href="/" className="text-2xl font-black text-[#424242] mb-10">
+    <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+      <Link href="/" className="text-4xl font-black text-[#424242] mb-10">
         Career<span className="text-[#ffc000]">OS.</span>
       </Link>
 
@@ -115,6 +117,8 @@ export default function SignUpPage() {
           </button>
         </form>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
+import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
 import { CATEGORY_COLOURS, type PortfolioEntry } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
@@ -185,11 +186,7 @@ export default function PublicPortfolioClient({
         </section>
       </main>
 
-      <footer className="border-t border-[#424242]/8 py-6 text-center mt-8">
-        <p className="text-[11px] text-[#424242]/30">
-          Built with <span className="text-[#ffc000] font-bold">CareerOS</span> — Talentbank Tech Hackathon 2026
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }

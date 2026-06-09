@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Footer from "@/components/layout/Footer";
 
 export default function LandingPage() {
   return (
@@ -179,12 +180,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Footer ─────────────────────────────────────────────── */}
-      <footer className="border-t border-[#424242]/8 py-8 text-center">
-        <p className="text-[11px] text-[#424242]/30 font-medium">
-          Career<span className="text-[#ffc000]">OS.</span> — Talentbank Tech Hackathon 2026
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }

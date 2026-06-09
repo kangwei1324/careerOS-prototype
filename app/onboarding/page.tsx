@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/authStore";
+import Footer from "@/components/layout/Footer";
 
 // ── Candidate onboarding ─────────────────────────────────────────
 function CandidateOnboarding({ onDone }: { onDone: () => void }) {
@@ -164,7 +165,7 @@ function CandidateOnboarding({ onDone }: { onDone: () => void }) {
 
 // ── Employer onboarding ──────────────────────────────────────────
 function EmployerOnboarding({ onDone }: { onDone: () => void }) {
-  const [form, setForm] = useState({ company_name: "", industry: "", description: "" });
+  const [form, setForm] = useState({ company_name: "", industry: "", location: "" });
   const [saving, setSaving] = useState(false);
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -182,9 +183,9 @@ function EmployerOnboarding({ onDone }: { onDone: () => void }) {
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-[18px] font-black text-[#424242]">Set up your company</h2>
       {[
-        { label: "Company name", key: "company_name", placeholder: "Acme Corp" },
-        { label: "Industry", key: "industry", placeholder: "FinTech, SaaS, E-commerce…" },
-        { label: "What you're looking for", key: "description", placeholder: "We hire engineers who care about…" },
+      { label: "Company name",              key: "company_name", placeholder: "Acme Corp" },
+        { label: "Industry",                  key: "industry",     placeholder: "FinTech, SaaS, E-commerce…" },
+        { label: "Office location address",   key: "location",     placeholder: "123 Main St, Kuala Lumpur, Malaysia" },
       ].map(({ label, key, placeholder }) => (
         <div key={key}>
           <label className="block text-[11px] font-bold uppercase tracking-widest text-[#424242]/50 mb-1.5">
@@ -221,7 +222,8 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f7f7] flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
       <Link href="/" className="text-2xl font-black text-[#424242] mb-10">
         Career<span className="text-[#ffc000]">OS.</span>
       </Link>
@@ -237,6 +239,8 @@ export default function OnboardingPage() {
           <EmployerOnboarding onDone={() => router.push("/dashboard")} />
         )}
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

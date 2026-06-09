@@ -50,7 +50,8 @@ export default function AppNavbar() {
   ];
 
   const employerLinks = [
-    { href: "/talent", label: "Browse Talent" },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/talent",    label: "Browse Talent" },
   ];
 
   const navLinks = user?.role === "candidate" ? candidateLinks : employerLinks;
@@ -78,10 +79,19 @@ export default function AppNavbar() {
                 {link.label}
               </NavLink>
             ))}
+            {/* Company Profile — employers only */}
+            {user?.role === "employer" && (
+              <button
+                className="text-[12px] font-bold px-3 py-1.5 rounded-full text-[#424242]/60 hover:text-[#424242] hover:bg-white/70 transition-all"
+                aria-label="Company Profile"
+              >
+                Company Profile
+              </button>
+            )}
             {user && (
               <button
                 onClick={handleLogout}
-                className="text-[12px] font-bold text-[#424242]/45 hover:text-[#424242] ml-2 transition-colors px-3 py-1.5"
+                className="text-[12px] font-bold ml-2 px-3 py-1.5 rounded-full text-red-600 hover:bg-red-500 hover:text-white transition-all"
               >
                 Sign out
               </button>
@@ -125,10 +135,19 @@ export default function AppNavbar() {
                 {link.label}
               </NavLink>
             ))}
+            {/* Company Profile — employers only */}
+            {user?.role === "employer" && (
+              <button
+                className="text-left text-[12px] font-bold px-3 py-1.5 rounded-full text-[#424242]/60 hover:text-[#424242] hover:bg-white/70 transition-all"
+                aria-label="Company Profile"
+              >
+                Company Profile
+              </button>
+            )}
             {user && (
               <button
                 onClick={handleLogout}
-                className="text-left text-[12px] font-bold text-[#424242]/45 hover:text-[#424242] px-3 py-1.5 transition-colors"
+                className="text-left text-[12px] font-bold mt-1 px-3 py-1.5 rounded-full text-red-600 hover:bg-red-500 hover:text-white transition-all"
               >
                 Sign out
               </button>

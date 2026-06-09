@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import AppNavbar from "@/components/layout/AppNavbar";
+import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
 
 interface CareerPath {
@@ -269,6 +270,7 @@ export default function ExplorePage() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

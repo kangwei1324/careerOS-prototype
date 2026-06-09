@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
+import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
 import { CATEGORY_COLOURS, type PortfolioEntry } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
@@ -181,6 +182,7 @@ export default function TalentProfileClient({
           </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

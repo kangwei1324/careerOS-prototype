@@ -47,6 +47,7 @@ function initSchema(db: Database.Database) {
       user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       company_name TEXT    NOT NULL DEFAULT '',
       industry     TEXT    NOT NULL DEFAULT '',
+      location     TEXT    NOT NULL DEFAULT '',
       description  TEXT    NOT NULL DEFAULT '',
       updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -78,4 +79,11 @@ function initSchema(db: Database.Database) {
       viewed_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // ── Safe migration: add location to employer_profiles if missing ──
+  try {
+    db.exec(`ALTER TABLE employer_profiles ADD COLUMN location TEXT NOT NULL DEFAULT ''`);
+  } catch {
+    // Column already exists — ignore
+  }
 }

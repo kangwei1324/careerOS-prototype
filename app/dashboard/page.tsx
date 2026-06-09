@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
+import Footer from "@/components/layout/Footer";
 import { formatDate } from "@/lib/utils";
 import { CATEGORY_COLOURS, type PortfolioEntry, type Signal } from "@/lib/types";
 
@@ -205,33 +206,100 @@ function CandidateDashboard({ username }: { username: string }) {
 // ── Employer Dashboard ───────────────────────────────────────────
 function EmployerDashboard() {
   const [profile, setProfile] = useState<any>(null);
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
   useEffect(() => {
     fetch("/api/onboarding")
       .then((r) => r.json())
-      .then(setProfile)
+      .then((p) => {
+        setProfile(p);
+        setDescription(p?.description ?? "");
+      })
       .catch(() => null);
   }, []);
 
+  const saveDescription = async () => {
+    if (!profile) return;
+    setSaving(true);
+    setSaved(false);
+    try {
+      await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: profile.company_name,
+          industry: profile.industry,
+          location: profile.location,
+          description,
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
-      <div className="bg-[#424242] rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Employer dashboard</p>
-          <h1 className="text-white text-[22px] font-black">
-            {profile?.company_name || "Your company"} 🏢
-          </h1>
-          <p className="text-white/40 text-[13px] mt-1">Find the right people before they're looking</p>
+      <div className="bg-[#424242] rounded-2xl p-6">
+        <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Employer dashboard</p>
+        <h1 className="text-white text-[22px] font-black mb-3">
+          {profile?.company_name || "Your company"} 🏢
+        </h1>
+        <div className="flex flex-wrap gap-4">
+          {profile?.industry && (
+            <span className="flex items-center gap-1.5 text-white/55 text-[13px]">
+              <span aria-hidden="true">🏭</span> {profile.industry}
+            </span>
+          )}
+          {profile?.location && (
+            <span className="flex items-center gap-1.5 text-white/55 text-[13px]">
+              <span aria-hidden="true">📍</span> {profile.location}
+            </span>
+          )}
+          {!profile?.industry && !profile?.location && (
+            <p className="text-white/40 text-[13px]">Find the right people before they&apos;re looking</p>
+          )}
         </div>
-        <Link
-          href="/talent"
-          className="bg-[#ffc000] text-[#424242] text-[13px] font-black px-5 py-2.5 rounded-full hover:bg-[#e6ac00] transition-all whitespace-nowrap flex-shrink-0"
-        >
-          Browse talent →
-        </Link>
       </div>
+
+      {/* What are you looking for */}
+      <div className="bg-white rounded-xl p-6 shadow-[var(--card-shadow)]">
+        <h2 className="text-[15px] font-black text-[#424242] mb-1">What are you looking for?</h2>
+        <p className="text-[12px] text-[#424242]/40 mb-1">
+          Describe the type of candidate you want to find — skills, experience level, traits, or anything else.
+        </p>
+        <p className="text-[12px] text-[#424242]/40 mb-4">
+          This is saved and editable at any time — it updates the system on what candidates you are actively seeking.
+        </p>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={4}
+          placeholder="e.g. We're looking for frontend engineers with 2+ years of React experience who thrive in fast-paced startups…"
+          className="w-full border border-[#424242]/15 rounded-xl px-4 py-3 text-[13px] text-[#424242] outline-none focus:border-[#ffc000] transition-colors resize-none leading-relaxed"
+        />
+        <div className="flex items-center justify-between mt-3">
+          {saved && (
+            <span className="text-[12px] text-green-600 font-bold">✓ Saved</span>
+          )}
+          {!saved && <span />}
+          <button
+            onClick={saveDescription}
+            disabled={saving}
+            className="bg-[#ffc000] text-[#424242] text-[13px] font-black px-5 py-2 rounded-full hover:bg-[#e6ac00] transition-all disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl p-8 shadow-[var(--card-shadow)] text-center">
         <p className="text-3xl mb-3" aria-hidden="true">🔍</p>
-        <p className="text-[15px] font-black text-[#424242] mb-1">Start discovering talent</p>
+        <p className="text-[15px] font-black text-[#424242] mb-1">Discover other talents yourself</p>
         <p className="text-[13px] text-[#424242]/50 mb-5">
           Browse candidates by field, skills, and location. View their living portfolios.
         </p>
@@ -255,15 +323,16 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#f7f7f7]">
+    <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
       <AppNavbar />
-      <main>
+      <main className="flex-1">
         {user.role === "candidate" ? (
           <CandidateDashboard username={user.username} />
         ) : (
           <EmployerDashboard />
         )}
       </main>
+      <Footer />
     </div>
   );
 }

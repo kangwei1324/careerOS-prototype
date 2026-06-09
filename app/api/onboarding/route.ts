@@ -47,12 +47,12 @@ export async function POST(req: NextRequest) {
       session.userId
     );
   } else {
-    const { company_name, industry, description } = body;
+    const { company_name, industry, location, description } = body;
     db.prepare(
       `UPDATE employer_profiles
-       SET company_name = ?, industry = ?, description = ?, updated_at = datetime('now')
+       SET company_name = ?, industry = ?, location = ?, description = ?, updated_at = datetime('now')
        WHERE user_id = ?`
-    ).run(company_name ?? "", industry ?? "", description ?? "", session.userId);
+    ).run(company_name ?? "", industry ?? "", location ?? "", description ?? "", session.userId);
   }
 
   return NextResponse.json({ ok: true });
