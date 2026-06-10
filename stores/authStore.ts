@@ -1,5 +1,8 @@
+"use client";
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useState, useEffect } from "react";
 
 export type UserRole = "candidate" | "employer";
 
@@ -32,3 +35,27 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+/**
+ * Hook that returns true once Zustand has finished hydrating from localStorage.
+ * Use this to prevent auth guards from redirecting before the persisted state is loaded.
+ */
+export function useHasHydrated() {
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    // Zustand persist middleware exposes onFinishHydration on the persist API
+    const unsub = useAuthStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+
+    // If hydration already happened (e.g., store was already initialised), set immediately
+    if (useAuthStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+
+    return unsub;
+  }, []);
+
+  return hydrated;
+}

@@ -128,4 +128,12 @@ function initSchema(db: Database.Database) {
   } catch {
     // Column already exists — ignore
   }
+
+  // ── Safe migration: add company_description (separate from "description" used for AI matching) ──
+  try {
+    db.exec(`ALTER TABLE employer_profiles ADD COLUMN company_description TEXT NOT NULL DEFAULT ''`);
+  } catch {
+    // Column already exists — ignore
+  }
+
 }

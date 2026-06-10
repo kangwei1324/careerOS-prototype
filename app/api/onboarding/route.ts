@@ -60,16 +60,17 @@ export async function POST(req: NextRequest) {
       session.userId
     );
   } else {
-    const { company_name, industry, location, description, socials } = body;
+    const { company_name, industry, location, description, company_description, socials } = body;
     db.prepare(
       `UPDATE employer_profiles
-       SET company_name = ?, industry = ?, location = ?, description = ?, socials_json = ?, updated_at = datetime('now')
+       SET company_name = ?, industry = ?, location = ?, description = ?, company_description = ?, socials_json = ?, updated_at = datetime('now')
        WHERE user_id = ?`
     ).run(
       company_name ?? "",
       industry ?? "",
       location ?? "",
       description ?? "",
+      company_description ?? "",
       JSON.stringify(socials ?? {}),
       session.userId
     );

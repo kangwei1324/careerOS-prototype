@@ -12,6 +12,7 @@ interface Profile {
   industry: string;
   location: string;
   description: string;
+  company_description: string;
   socials: {
     website?: string;
     linkedin?: string;
@@ -35,12 +36,16 @@ export default function CompanyProfileClient({
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Inline company description editing
+  const [isDescEditing, setIsDescEditing] = useState(false);
+  const [descDraft, setDescDraft] = useState(initialProfile.company_description || "");
+  const [savingDesc, setSavingDesc] = useState(false);
+
   const [form, setForm] = useState({
     company_name: initialProfile.company_name,
     industry: initialProfile.industry,
     state: "",
     city: "",
-    description: initialProfile.description,
     website: initialProfile.socials?.website || "",
     linkedin: initialProfile.socials?.linkedin || "",
     twitter: initialProfile.socials?.twitter || "",
@@ -78,7 +83,8 @@ export default function CompanyProfileClient({
           company_name: form.company_name,
           industry: form.industry,
           location: locationVal,
-          description: form.description,
+          description: profile.description,
+          company_description: profile.company_description,
           socials: {
             website: form.website,
             linkedin: form.linkedin,
@@ -92,7 +98,8 @@ export default function CompanyProfileClient({
           company_name: form.company_name,
           industry: form.industry,
           location: locationVal,
-          description: form.description,
+          description: profile.description,
+          company_description: profile.company_description,
           socials: {
             website: form.website,
             linkedin: form.linkedin,
@@ -108,6 +115,38 @@ export default function CompanyProfileClient({
       showToast("Failed to save changes. Please try again.", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Save only the company_description field inline
+  const handleDescSave = async () => {
+    setSavingDesc(true);
+    try {
+      const locationVal = form.city && form.state ? `${form.city}, ${form.state}` : (form.city || form.state || "");
+      const res = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: profile.company_name,
+          industry: profile.industry,
+          location: locationVal,
+          description: profile.description,
+          company_description: descDraft,
+          socials: profile.socials,
+        }),
+      });
+
+      if (res.ok) {
+        setProfile((prev) => ({ ...prev, company_description: descDraft }));
+        setIsDescEditing(false);
+        showToast("Description updated successfully ✓", "success");
+      } else {
+        throw new Error();
+      }
+    } catch {
+      showToast("Failed to save description. Please try again.", "error");
+    } finally {
+      setSavingDesc(false);
     }
   };
 
@@ -128,7 +167,6 @@ export default function CompanyProfileClient({
       industry: profile.industry,
       state,
       city,
-      description: profile.description,
       website: profile.socials?.website || "",
       linkedin: profile.socials?.linkedin || "",
       twitter: profile.socials?.twitter || "",
@@ -215,14 +253,58 @@ export default function CompanyProfileClient({
                 </div>
               )}
 
-              {/* Description */}
+              {/* Description — inline editable */}
               <div className="pt-4 border-t border-[#424242]/8">
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-[#424242]/40 mb-2">
-                  Company Description
-                </h3>
-                <p className="text-[13px] text-[#424242]/70 leading-relaxed whitespace-pre-line">
-                  {profile.description || "No company description provided yet."}
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-[#424242]/40">
+                    Company Description
+                  </h3>
+                  {isOwner && !isDescEditing && (
+                    <button
+                      onClick={() => {
+                        setDescDraft(profile.company_description || "");
+                        setIsDescEditing(true);
+                      }}
+                      className="text-[11px] font-bold text-[#424242]/50 hover:text-[#424242] flex items-center gap-1 transition-colors"
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  value={isDescEditing ? descDraft : (profile.company_description || "")}
+                  onChange={(e) => setDescDraft(e.target.value)}
+                  readOnly={!isDescEditing}
+                  rows={4}
+                  placeholder="Describe your company..."
+                  className={`w-full rounded-xl px-4 py-2.5 text-[13px] text-[#424242]/70 leading-relaxed resize-none outline-none transition-all ${
+                    isDescEditing
+                      ? "bg-white border border-[#ffc000] focus:border-[#e6ac00]"
+                      : "bg-[#f7f7f7] border border-transparent cursor-default"
+                  }`}
+                />
+                {isDescEditing && (
+                  <div className="flex justify-end gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDescDraft(profile.company_description || "");
+                        setIsDescEditing(false);
+                      }}
+                      className="text-[12px] font-bold text-[#424242]/50 hover:text-[#424242] px-4 py-2 rounded-full transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDescSave}
+                      disabled={savingDesc}
+                      className="bg-[#ffc000] text-[#424242] text-[12px] font-black px-5 py-2 rounded-full hover:bg-[#e6ac00] disabled:opacity-40 transition-all"
+                    >
+                      {savingDesc ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -309,19 +391,6 @@ export default function CompanyProfileClient({
                 </div>
               </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-widest text-[#424242]/50 mb-1.5">
-                  Company Description
-                </label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => updateForm("description", e.target.value)}
-                  rows={4}
-                  placeholder="Describe your company's mission and goals..."
-                  className="w-full border border-[#424242]/15 rounded-xl px-4 py-2.5 text-[13px] text-[#424242] outline-none focus:border-[#ffc000] transition-colors resize-none leading-relaxed"
-                />
-              </div>
 
               {/* Social Links */}
               <div className="border-t border-[#424242]/8 pt-4 space-y-4">

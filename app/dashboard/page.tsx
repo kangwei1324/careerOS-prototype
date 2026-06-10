@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
 import { formatDate } from "@/lib/utils";
@@ -244,10 +244,11 @@ function EmployerDashboard() {
     }
   };
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = async (refresh = false) => {
     setLoadingSuggestions(true);
     try {
-      const res = await fetch("/api/employer/suggestions");
+      const url = refresh ? "/api/employer/suggestions?refresh=1" : "/api/employer/suggestions";
+      const res = await fetch(url);
       const data = await res.json();
       setSuggestions(Array.isArray(data) ? data : []);
     } catch {
@@ -285,13 +286,14 @@ function EmployerDashboard() {
           industry: profile.industry,
           location: profile.location,
           description,
+          company_description: profile.company_description ?? "",
           socials: profile.socials || {},
         }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       // Refresh AI suggestions when requirement changes
-      fetchSuggestions();
+      fetchSuggestions(true);
     } finally {
       setSaving(false);
     }
@@ -533,12 +535,13 @@ function EmployerDashboard() {
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const router = useRouter();
+  const hydrated = useHasHydrated();
 
   useEffect(() => {
-    if (!user) router.push("/auth/signin");
-  }, [user, router]);
+    if (hydrated && !user) router.push("/auth/signin");
+  }, [hydrated, user, router]);
 
-  if (!user) return null;
+  if (!hydrated || !user) return null;
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] flex flex-col">

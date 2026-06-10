@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
@@ -20,7 +20,10 @@ export default function TalentPage() {
   const [filters, setFilters] = useState({ field: "", state: "", city: "", skills: "" });
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
+  const hydrated = useHasHydrated();
+
   useEffect(() => {
+    if (!hydrated) return;
     if (!user) {
       router.push("/auth/signin");
       return;
@@ -30,7 +33,7 @@ export default function TalentPage() {
       return;
     }
     fetchCandidates();
-  }, [user]);
+  }, [hydrated, user]);
 
   const fetchCandidates = async (f = filters) => {
     setLoading(true);

@@ -18,7 +18,7 @@ export default async function CompanyProfilePage({
 
   const profile = db
     .prepare(
-      "SELECT company_name, industry, location, description, socials_json FROM employer_profiles WHERE user_id = ?"
+      "SELECT company_name, industry, location, description, company_description, socials_json FROM employer_profiles WHERE user_id = ?"
     )
     .get(user.id) as any;
 
@@ -31,6 +31,7 @@ export default async function CompanyProfilePage({
         industry: profile?.industry ?? "",
         location: profile?.location ?? "",
         description: profile?.description ?? "",
+        company_description: profile?.company_description ?? "",
         socials: JSON.parse(profile?.socials_json ?? "{}"),
       }}
     />

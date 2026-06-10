@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
@@ -169,10 +169,12 @@ export default function LogActivityPage() {
   const [editSkills, setEditSkills] = useState<string[]>([]);
   const [editStructured, setEditStructured] = useState<Record<string, string>>({});
 
+  const hydrated = useHasHydrated();
+
   useEffect(() => {
-    if (!user) router.push("/auth/signin");
-    else if (user.role !== "candidate") router.push("/dashboard");
-  }, [user, router]);
+    if (hydrated && !user) router.push("/auth/signin");
+    else if (hydrated && user && user.role !== "candidate") router.push("/dashboard");
+  }, [hydrated, user, router]);
 
   const generate = async () => {
     if (!rawLog.trim()) return;
@@ -260,7 +262,7 @@ export default function LogActivityPage() {
     }
   };
 
-  if (!user) return null;
+  if (!hydrated || !user) return null;
 
   const badge = SECTION_BADGES[editSection];
 

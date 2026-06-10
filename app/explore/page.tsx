@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
@@ -41,7 +41,10 @@ export default function ExplorePage() {
   const [paths, setPaths] = useState<CareerPath[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
 
+  const hydrated = useHasHydrated();
+
   useEffect(() => {
+    if (!hydrated) return;
     if (!user) { router.push("/auth/signin"); return; }
     if (user.role !== "candidate") { router.push("/dashboard"); return; }
 
@@ -60,7 +63,7 @@ export default function ExplorePage() {
         }
       })
       .catch(() => null);
-  }, [user, router]);
+  }, [hydrated, user, router]);
 
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -94,7 +97,7 @@ export default function ExplorePage() {
     }
   };
 
-  if (!user) return null;
+  if (!hydrated || !user) return null;
 
   return (
     <div className="min-h-screen bg-[#f7f7f7]">

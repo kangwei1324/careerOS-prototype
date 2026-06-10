@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import Footer from "@/components/layout/Footer";
 import { MALAYSIA_LOCATIONS, FIELDS_AND_SKILLS, INDUSTRIES } from "@/lib/referenceData";
 
@@ -361,7 +361,7 @@ function EmployerOnboarding({ onDone }: { onDone: () => void }) {
     industry: "",
     state: "",
     city: "",
-    description: "",
+    company_description: "",
     website: "",
     linkedin: "",
     twitter: "",
@@ -390,7 +390,7 @@ function EmployerOnboarding({ onDone }: { onDone: () => void }) {
             industry: data.industry || "",
             state: state || "",
             city: city || "",
-            description: data.description || "",
+            company_description: data.company_description || "",
             website: data.socials?.website || "",
             linkedin: data.socials?.linkedin || "",
             twitter: data.socials?.twitter || "",
@@ -412,7 +412,8 @@ function EmployerOnboarding({ onDone }: { onDone: () => void }) {
         company_name: form.company_name,
         industry: form.industry,
         location,
-        description: form.description,
+        description: "",
+        company_description: form.company_description,
         socials: {
           website: form.website,
           linkedin: form.linkedin,
@@ -512,14 +513,14 @@ function EmployerOnboarding({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
-      {/* Description */}
+      {/* Company Description */}
       <div>
         <label className="block text-[11px] font-bold uppercase tracking-widest text-[#424242]/50 mb-1.5">
           Company Description / Mission
         </label>
         <textarea
-          value={form.description}
-          onChange={(e) => update("description", e.target.value)}
+          value={form.company_description}
+          onChange={(e) => update("company_description", e.target.value)}
           rows={3}
           placeholder="Briefly describe what your company does..."
           className="w-full border border-[#424242]/15 rounded-xl px-4 py-2.5 text-[13px] text-[#424242] outline-none focus:border-[#ffc000] transition-colors resize-none leading-relaxed"
@@ -563,6 +564,10 @@ function EmployerOnboarding({ onDone }: { onDone: () => void }) {
 export default function OnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+
+  const hydrated = useHasHydrated();
+
+  if (!hydrated) return null;
 
   if (!user) {
     if (typeof window !== "undefined") router.push("/auth/signin");

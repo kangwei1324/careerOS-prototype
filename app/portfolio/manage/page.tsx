@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
@@ -21,14 +21,17 @@ export default function ManagePortfolioPage() {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
+  const hydrated = useHasHydrated();
+
   useEffect(() => {
+    if (!hydrated) return;
     if (!user) { router.push("/auth/signin"); return; }
     if (user.role !== "candidate") { router.push("/dashboard"); return; }
     fetch("/api/portfolio/entries")
       .then((r) => r.json())
       .then((data) => { setEntries(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => { setEntries([]); setLoading(false); });
-  }, [user, router]);
+  }, [hydrated, user, router]);
 
   const startEdit = (e: PortfolioEntry) => { setEditingId(e.id); setEditText(e.polished_entry); };
 

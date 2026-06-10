@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
@@ -38,8 +38,11 @@ export default function EditProfilePage() {
   });
   const [skillInput, setSkillInput] = useState("");
 
+  const hydrated = useHasHydrated();
+
   // Pre-fill with current profile data
   useEffect(() => {
+    if (!hydrated) return;
     if (!user) { router.push("/auth/signin"); return; }
     if (user.role !== "candidate") { router.push("/dashboard"); return; }
 
@@ -59,7 +62,8 @@ export default function EditProfilePage() {
       })
       .catch(() => null)
       .finally(() => setLoading(false));
-  }, [user, router]);
+  }, [hydrated, user, router]);
+
 
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -92,7 +96,7 @@ export default function EditProfilePage() {
     }
   };
 
-  if (!user || loading) {
+  if (!hydrated || !user || loading) {
     return (
       <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
         <AppNavbar />
