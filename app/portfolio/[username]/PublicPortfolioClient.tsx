@@ -538,6 +538,13 @@ export default function PublicPortfolioClient({
     showToast("Portfolio link copied!", "success");
   };
 
+  const downloadResume = () => {
+    const prev = document.title;
+    document.title = `${profile.name} – Resume`;
+    window.print();
+    document.title = prev;
+  };
+
   const regenerateBio = async () => {
     setGeneratingBio(true);
     try {
@@ -556,15 +563,15 @@ export default function PublicPortfolioClient({
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f7f7]">
+    <div className="min-h-screen bg-[#f7f7f7] resume-root">
       <AppNavbar />
 
       <main className="max-w-2xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
         {/* Profile header */}
-        <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-7">
+        <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-7 resume-profile-card">
           <div className="flex gap-5 items-start">
             <div
-              className="w-20 h-20 flex-shrink-0 rounded-2xl bg-[#424242] flex items-center justify-center text-white text-[28px] font-black"
+              className="w-20 h-20 flex-shrink-0 rounded-2xl bg-[#424242] flex items-center justify-center text-white text-[28px] font-black resume-avatar"
               aria-hidden="true"
             >
               {profile.name.charAt(0).toUpperCase()}
@@ -589,12 +596,22 @@ export default function PublicPortfolioClient({
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={copyUrl}
-                  className="flex-shrink-0 text-[12px] font-bold text-[#424242]/50 border border-[#424242]/15 px-4 py-2 rounded-full hover:border-[#424242]/30 transition-all flex items-center gap-1.5"
-                >
-                  <span aria-hidden="true">🔗</span> Copy link
-                </button>
+                <div className="flex items-center gap-2 no-print">
+                  <button
+                    onClick={copyUrl}
+                    className="flex-shrink-0 text-[12px] font-bold text-[#424242]/50 border border-[#424242]/15 px-4 py-2 rounded-full hover:border-[#424242]/30 transition-all flex items-center gap-1.5"
+                  >
+                    <span aria-hidden="true">🔗</span> Copy link
+                  </button>
+                  <button
+                    onClick={downloadResume}
+                    className="flex-shrink-0 text-[12px] font-bold text-white bg-[#424242] px-4 py-2 rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
+                    title="Download portfolio as PDF resume"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Resume PDF
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -633,7 +650,7 @@ export default function PublicPortfolioClient({
             </h2>
             <div className="flex flex-wrap gap-2">
               {allSkills.map((s) => (
-                <span key={s} className="bg-[#ffc000]/15 text-[#424242] text-[11px] font-bold px-3 py-1.5 rounded-full">
+                <span key={s} className="bg-[#ffc000]/15 text-[#424242] text-[11px] font-bold px-3 py-1.5 rounded-full resume-skill-pill">
                   {s}
                 </span>
               ))}
@@ -677,10 +694,10 @@ export default function PublicPortfolioClient({
               {entries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5"
+                  className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5 resume-entry-card"
                 >
                   <div className="flex items-center gap-2 mb-3">
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${CATEGORY_COLOURS[entry.category] ?? CATEGORY_COLOURS.Other}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full resume-category-badge ${CATEGORY_COLOURS[entry.category] ?? CATEGORY_COLOURS.Other}`}>
                       {entry.category}
                     </span>
                     <span className="text-[10px] text-[#424242]/40">{formatDate(entry.entry_date)}</span>
@@ -689,7 +706,7 @@ export default function PublicPortfolioClient({
                   {entry.skills.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-3">
                       {entry.skills.map((s) => (
-                        <span key={s} className="bg-[#424242]/8 text-[#424242]/55 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                        <span key={s} className="bg-[#424242]/8 text-[#424242]/55 text-[10px] font-bold px-2.5 py-1 rounded-full resume-skill-pill">
                           {s}
                         </span>
                       ))}

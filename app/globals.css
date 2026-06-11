@@ -95,3 +95,123 @@ body {
   animation: shimmer 1.4s infinite;
   border-radius: 8px;
 }
+
+/* ── Print / Resume Download ─────────────────────────────────── */
+@media print {
+  /* Page setup */
+  @page {
+    margin: 18mm 16mm;
+    size: A4 portrait;
+  }
+
+  /* Hide all UI chrome */
+  nav,
+  footer,
+  .no-print,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  /* Reset page background */
+  html, body {
+    background: #fff !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Main resume container */
+  .resume-root {
+    background: #fff !important;
+    min-height: unset !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  /* Profile card */
+  .resume-profile-card {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border-bottom: 2px solid #1a1a1a !important;
+    padding: 0 0 12pt 0 !important;
+    margin-bottom: 14pt !important;
+  }
+
+  /* Section cards */
+  .bg-white {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    padding: 6pt 0 !important;
+  }
+
+  /* Section headings */
+  h2 {
+    font-size: 9pt !important;
+    letter-spacing: 0.12em !important;
+    border-bottom: 1px solid #ccc !important;
+    padding-bottom: 4pt !important;
+    margin-bottom: 8pt !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Body text */
+  p, span, li {
+    font-size: 9pt !important;
+    line-height: 1.5 !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Name */
+  h1 {
+    font-size: 20pt !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Skill pills – render as comma-separated inline text */
+  .resume-skill-pill {
+    background: none !important;
+    padding: 0 !important;
+    font-size: 9pt !important;
+    color: #1a1a1a !important;
+  }
+  .resume-skill-pill::after {
+    content: ", ";
+  }
+  .resume-skill-pill:last-child::after {
+    content: "";
+  }
+
+  /* Category badges */
+  .resume-category-badge {
+    background: none !important;
+    color: #555 !important;
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    padding: 0 !important;
+  }
+
+  /* Entry cards – no card style in print */
+  .resume-entry-card {
+    border-bottom: 1px solid #eee !important;
+    padding: 6pt 0 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Avatar – hide in print */
+  .resume-avatar {
+    display: none !important;
+  }
+
+  /* Force black on amber text */
+  [class*="text-[#ffc000]"],
+  [class*="text-amber"],
+  [class*="text-[#b38600]"] {
+    color: #1a1a1a !important;
+  }
+}
