@@ -80,7 +80,7 @@ export default function EditProfilePage() {
       const res = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, experience_years: Number(form.experience_years) }),
+        body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error();
       showToast("Profile updated ✓", "success");

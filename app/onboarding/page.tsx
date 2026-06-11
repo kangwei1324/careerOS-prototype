@@ -34,7 +34,7 @@ function CandidateOnboarding({ onDone }: { onDone: () => void }) {
     await fetch("/api/onboarding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, experience_years: Number(form.experience_years) }),
+      body: JSON.stringify(form),
     });
     onDone();
   };

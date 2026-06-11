@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
 
   if (session.role === "candidate") {
     const { name, headline, location, field, experience_years, skills } = body;
+    // Store experience_years as a string so values like "10+" survive the round-trip
+    const expYears = experience_years != null ? String(experience_years) : "0";
     db.prepare(
       `UPDATE candidate_profiles
        SET name = ?, headline = ?, location = ?, field = ?,
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
       headline ?? "",
       location ?? "",
       field ?? "",
-      experience_years ?? 0,
+      expYears,
       JSON.stringify(skills ?? []),
       session.userId
     );
