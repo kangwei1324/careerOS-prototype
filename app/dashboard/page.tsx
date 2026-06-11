@@ -36,6 +36,51 @@ function CandidateDashboard({ username }: { username: string }) {
     new Set(entries.flatMap((e) => e.skills))
   ).slice(0, 8);
 
+  const [primarySkills, setPrimarySkills] = useState<string[]>([]);
+  const [dismissedAi, setDismissedAi] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
+  const [savingSkills, setSavingSkills] = useState(false);
+
+  // Sync primarySkills from profile when it loads
+  useEffect(() => {
+    if (profile?.skills) setPrimarySkills(Array.isArray(profile.skills) ? profile.skills : []);
+  }, [profile]);
+
+  const aiOnlySkills: string[] = allSkills
+    .filter((s) => !primarySkills.includes(s) && !dismissedAi.includes(s));
+
+  const saveSkills = async (updated: string[]) => {
+    if (!profile) return;
+    setSavingSkills(true);
+    try {
+      await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...profile, skills: updated }),
+      });
+    } finally {
+      setSavingSkills(false);
+    }
+  };
+
+  const addSkill = () => {
+    const trimmed = skillInput.trim();
+    if (!trimmed || primarySkills.includes(trimmed)) { setSkillInput(""); return; }
+    const updated = [...primarySkills, trimmed];
+    setPrimarySkills(updated);
+    setSkillInput("");
+    saveSkills(updated);
+  };
+
+  const removeSkill = (s: string) => {
+    const updated = primarySkills.filter((x) => x !== s);
+    setPrimarySkills(updated);
+    saveSkills(updated);
+  };
+
+  const dismissAiSkill = (s: string) => setDismissedAi((prev) => [...prev, s]);
+
+
   const completeness = profile
     ? [profile.name, profile.headline, profile.location, profile.field, (profile.skills || []).length > 0]
       .filter(Boolean).length * 20
@@ -54,6 +99,7 @@ function CandidateDashboard({ username }: { username: string }) {
     );
   }
 
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
       {/* Welcome banner */}
@@ -61,6 +107,15 @@ function CandidateDashboard({ username }: { username: string }) {
         <div>
           <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Your career, building.</p>
           <h1 className="text-white text-[22px] font-black">Hi, {profile?.name || username} 👋</h1>
+          <p className="text-[13px] font-semibold text-[#c4c4c4]/60 mt-1 leading-snug">{profile?.headline}</p>
+          <div className="flex flex-wrap gap-3 mt-3">
+            <span className="text-[11px] text-[#f8f8f8]/50 flex items-center gap-1">
+              <span aria-hidden="true">📍</span> {profile.location}
+            </span>
+            <span className="text-[11px] text-[#c4c4c4]/50 flex items-center gap-1">
+              <span aria-hidden="true">💼</span> {profile.field}
+            </span>
+          </div>
           <p className="text-white/40 text-[13px] mt-1">{entries.length} portfolio {entries.length === 1 ? "entry" : "entries"} logged</p>
         </div>
         <Link
@@ -130,16 +185,70 @@ function CandidateDashboard({ username }: { username: string }) {
       )}
 
       {/* Skills */}
-      {allSkills.length > 0 && (
+      {(primarySkills.length > 0 || aiOnlySkills.length > 0) && (
         <div className="bg-white rounded-xl p-5 shadow-[var(--card-shadow)]">
-          <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50 mb-4">Top skills</h2>
-          <div className="flex flex-wrap gap-2">
-            {allSkills.map((s) => (
-              <span key={s} className="bg-[#ffc000]/15 text-[#424242] text-[11px] font-bold px-3 py-1.5 rounded-full">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50">Skills</h2>
+            {savingSkills && <span className="text-[10px] text-[#424242]/30 animate-pulse">Saving…</span>}
+          </div>
+
+          {/* Primary — profile-entered skills */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {primarySkills.map((s) => (
+              <span key={s} className="flex items-center gap-1 bg-[#ffc000] text-[#424242] text-[11px] font-black px-3 py-1.5 rounded-full">
                 {s}
+                <button
+                  onClick={() => removeSkill(s)}
+                  aria-label={`Remove ${s}`}
+                  className="ml-0.5 text-[#424242]/50 hover:text-[#424242] cursor-pointer text-[10px] leading-none transition-colors"
+                >
+                  ✕
+                </button>
               </span>
             ))}
+
+            {/* Inline add field */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); addSkill(); }}
+              className="flex items-center gap-1"
+            >
+              <input
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                placeholder="Add skill…"
+                className="text-[11px] border border-[#424242]/20 rounded-full px-3 py-1.5 w-28 outline-none focus:border-[#ffc000] transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={!skillInput.trim()}
+                aria-label="Add skill"
+                className="w-6 h-6 rounded-full bg-[#ffc000] text-[#424242] font-black text-[14px] leading-none flex items-center justify-center hover:bg-[#e6ac00] disabled:opacity-30 cursor-pointer transition-all"
+              >
+                +
+              </button>
+            </form>
           </div>
+
+          {/* Secondary — AI-detected skills not already listed */}
+          {aiOnlySkills.length > 0 && (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#424242]/30 mb-2">Also detected from your logs</p>
+              <div className="flex flex-wrap gap-2">
+                {aiOnlySkills.map((s) => (
+                  <span key={s} className="flex items-center gap-1 bg-[#424242]/6 text-[#424242]/50 text-[11px] font-bold px-3 py-1.5 rounded-full border border-[#424242]/8">
+                    {s}
+                    <button
+                      onClick={() => dismissAiSkill(s)}
+                      aria-label={`Dismiss ${s}`}
+                      className="ml-0.5 text-[#424242]/30 hover:text-[#424242]/60 cursor-pointer text-[10px] leading-none transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -210,15 +319,67 @@ function EmployerDashboard() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [shortlist, setShortlist] = useState<any[]>([]);
+  const [loadingShortlist, setLoadingShortlist] = useState(true);
+
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
   useEffect(() => {
     fetch("/api/onboarding")
       .then((r) => r.json())
       .then((p) => {
         setProfile(p);
         setDescription(p?.description ?? "");
+        if (p?.description) {
+          fetchSuggestions();
+        }
       })
       .catch(() => null);
+
+    fetchShortlist();
   }, []);
+
+  const fetchShortlist = async () => {
+    setLoadingShortlist(true);
+    try {
+      const res = await fetch("/api/employer/shortlist");
+      const data = await res.json();
+      setShortlist(Array.isArray(data) ? data : []);
+    } catch {
+      setShortlist([]);
+    } finally {
+      setLoadingShortlist(false);
+    }
+  };
+
+  const fetchSuggestions = async () => {
+    setLoadingSuggestions(true);
+    try {
+      const res = await fetch("/api/employer/suggestions");
+      const data = await res.json();
+      setSuggestions(Array.isArray(data) ? data : []);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const removeShortlist = async (candidateId: number) => {
+    try {
+      const res = await fetch("/api/interest", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateId }),
+      });
+      if (res.ok) {
+        setShortlist((list) => list.filter((c) => c.id !== candidateId));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const saveDescription = async () => {
     if (!profile) return;
@@ -233,10 +394,13 @@ function EmployerDashboard() {
           industry: profile.industry,
           location: profile.location,
           description,
+          socials: profile.socials || {},
         }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+      // Refresh AI suggestions when requirement changes
+      fetchSuggestions();
     } finally {
       setSaving(false);
     }
@@ -244,36 +408,83 @@ function EmployerDashboard() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
+      {/* Banner */}
       <div className="bg-[#424242] rounded-2xl p-6">
-        <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Employer dashboard</p>
-        <h1 className="text-white text-[22px] font-black mb-3">
-          {profile?.company_name || "Your company"} 🏢
-        </h1>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Employer dashboard</p>
+            <h1 className="text-white text-[22px] font-black">
+              {profile?.company_name || "Your company"} 🏢
+            </h1>
+          </div>
+          {profile?.username && (
+            <Link
+              href={`/company/${profile.username}`}
+              className="bg-white/10 hover:bg-white/20 text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all whitespace-nowrap"
+            >
+              View company profile →
+            </Link>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-4 mt-3 text-white/50 text-[13px]">
           {profile?.industry && (
-            <span className="flex items-center gap-1.5 text-white/55 text-[13px]">
-              <span aria-hidden="true">🏭</span> {profile.industry}
+            <span className="flex items-center gap-1">
+              <span>🏭</span> {profile.industry}
             </span>
           )}
           {profile?.location && (
-            <span className="flex items-center gap-1.5 text-white/55 text-[13px]">
-              <span aria-hidden="true">📍</span> {profile.location}
+            <span className="flex items-center gap-1">
+              <span>📍</span> {profile.location}
             </span>
           )}
-          {!profile?.industry && !profile?.location && (
-            <p className="text-white/40 text-[13px]">Find the right people before they&apos;re looking</p>
-          )}
         </div>
+
+        {/* Company Socials */}
+        {profile?.socials && (profile.socials.website || profile.socials.linkedin || profile.socials.twitter) && (
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/10">
+            {profile.socials.website && (
+              <a
+                href={profile.socials.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/70 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+              >
+                <span>🔗</span> Website
+              </a>
+            )}
+            {profile.socials.linkedin && (
+              <a
+                href={profile.socials.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/70 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+              >
+                <span>💼</span> LinkedIn
+              </a>
+            )}
+            {profile.socials.twitter && (
+              <a
+                href={profile.socials.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/70 hover:text-white text-[11px] font-semibold flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all"
+              >
+                <span>🐦</span> Twitter
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       {/* What are you looking for */}
       <div className="bg-white rounded-xl p-6 shadow-[var(--card-shadow)]">
         <h2 className="text-[15px] font-black text-[#424242] mb-1">What are you looking for?</h2>
         <p className="text-[12px] text-[#424242]/40 mb-1">
-          Describe the type of candidate you want to find — skills, experience level, traits, or anything else.
+          Describe the type of candidate you want to find — skills, experience level, traits, or target projects.
         </p>
         <p className="text-[12px] text-[#424242]/40 mb-4">
-          This is saved and editable at any time — it updates the system on what candidates you are actively seeking.
+          Gemini will analyze candidate work logs and recommend matches based on real capabilities.
         </p>
         <textarea
           value={description}
@@ -292,11 +503,127 @@ function EmployerDashboard() {
             disabled={saving}
             className="bg-[#ffc000] text-[#424242] text-[13px] font-black px-5 py-2 rounded-full hover:bg-[#e6ac00] transition-all disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : "Save & Find Matches"}
           </button>
         </div>
       </div>
 
+      {/* AI Suggested Candidates */}
+      <div className="bg-white rounded-xl p-6 shadow-[var(--card-shadow)] space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">✨</span>
+          <h2 className="text-[15px] font-black text-[#424242]">AI Suggested Candidates</h2>
+        </div>
+
+        {!description.trim() ? (
+          <p className="text-[12px] text-[#424242]/40 italic">
+            Describe what you are looking for above and save to generate AI candidate matches.
+          </p>
+        ) : loadingSuggestions ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-24 skeleton rounded-xl" />
+            ))}
+          </div>
+        ) : suggestions.length === 0 ? (
+          <p className="text-[12px] text-[#424242]/40 italic">
+            No candidates matched your description. Try adjusting your target skills or experience requirements.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {suggestions.map((c) => (
+              <div key={c.id} className="border border-[#424242]/8 rounded-xl p-4 hover:border-[#ffc000]/40 transition-colors bg-white">
+                <div className="flex justify-between items-start flex-wrap gap-2">
+                  <div>
+                    <Link href={`/talent/${c.username}`} className="text-[13px] font-black text-[#424242] hover:underline">
+                      {c.name}
+                    </Link>
+                    {c.headline && <p className="text-[11px] text-[#424242]/50">{c.headline}</p>}
+                    <p className="text-[10px] text-[#424242]/40 mt-1">📍 {c.location || "N/A"} • {c.field}</p>
+                  </div>
+                  <Link
+                    href={`/talent/${c.username}`}
+                    className="text-[11px] font-bold text-[#b38600] border border-[#ffc000]/25 hover:bg-[#ffc000]/5 px-3 py-1 rounded-full"
+                  >
+                    View profile
+                  </Link>
+                </div>
+
+                {/* AI Reason */}
+                {c.reason && (
+                  <div className="mt-3 bg-[#ffc000]/10 border-l-2 border-[#ffc000] p-2.5 rounded-r-lg text-[12px] text-[#424242]/80 leading-relaxed italic">
+                    <strong>Match Signal:</strong> {c.reason}
+                  </div>
+                )}
+
+                {/* Skills badges */}
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {c.skills.slice(0, 5).map((s: string) => (
+                    <span key={s} className="bg-[#424242]/6 text-[#424242]/60 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                      {s}
+                    </span>
+                  ))}
+                  {c.skills.length > 5 && (
+                    <span className="text-[9px] text-[#424242]/40">+{c.skills.length - 5}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Shortlisted Candidates */}
+      <div className="bg-white rounded-xl p-6 shadow-[var(--card-shadow)] space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">⭐</span>
+          <h2 className="text-[15px] font-black text-[#424242]">Shortlisted Candidates</h2>
+        </div>
+
+        {loadingShortlist ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-20 skeleton rounded-xl" />
+            ))}
+          </div>
+        ) : shortlist.length === 0 ? (
+          <div className="text-center py-6 text-[13px] text-[#424242]/40">
+            No candidates shortlisted yet. Search candidate portfolios to add some.
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-4">
+            {shortlist.map((c) => (
+              <div key={c.id} className="border border-[#424242]/8 rounded-xl p-4 flex flex-col justify-between hover:shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all bg-white">
+                <div>
+                  <div className="flex justify-between items-start gap-2">
+                    <Link href={`/talent/${c.username}`} className="text-[13px] font-black text-[#424242] hover:underline">
+                      {c.name}
+                    </Link>
+                    <button
+                      onClick={() => removeShortlist(c.id)}
+                      className="text-[#424242]/40 hover:text-red-500 text-[11px]"
+                      title="Remove from shortlist"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                  {c.headline && <p className="text-[11px] text-[#424242]/50 truncate mt-0.5">{c.headline}</p>}
+                  <p className="text-[10px] text-[#424242]/40 mt-1">📍 {c.location || "N/A"}</p>
+                </div>
+
+                <div className="flex justify-between items-center mt-4 pt-3 border-t border-[#424242]/5">
+                  <span className="text-[10px] text-[#424242]/40">{c.entry_count} logs</span>
+                  <Link href={`/talent/${c.username}`} className="text-[11px] font-bold text-[#b38600] hover:underline">
+                    View full profile →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Discover more */}
       <div className="bg-white rounded-xl p-8 shadow-[var(--card-shadow)] text-center">
         <p className="text-3xl mb-3" aria-hidden="true">🔍</p>
         <p className="text-[15px] font-black text-[#424242] mb-1">Discover other talents yourself</p>

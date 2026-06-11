@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
@@ -502,7 +502,323 @@ function HonoursSection({
   );
 }
 
-// ── Main Client Component ─────────────────────────────────────────────────────
+// ── Resume Preview Modal ─────────────────────────────────────────────────────
+
+// Shared editable span — click to edit inline, changes saved on blur
+function E({
+  value,
+  onChange,
+  className = "",
+  block = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  block?: boolean;
+}) {
+  const Tag = block ? "div" : "span";
+  return (
+    <Tag
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={(e) => onChange(e.currentTarget.textContent ?? "")}
+      className={`outline-none focus:bg-yellow-50 focus:ring-1 focus:ring-[#ffc000]/60 rounded cursor-text ${className}`}
+    >
+      {value}
+    </Tag>
+  );
+}
+
+function ResumePreviewModal({
+  profile,
+  entries: initialEntries,
+  allSkills,
+  workExperience: initialWork,
+  education: initialEdu,
+  honours: initialHonours,
+  onClose,
+}: {
+  profile: Profile;
+  entries: PortfolioEntry[];
+  allSkills: string[];
+  workExperience: WorkExperience[];
+  education: Education[];
+  honours: HonourAward[];
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  // ── local editable state ────────────────────────────────────────
+  const profileSkillsArr: string[] = Array.isArray(profile.skills) ? profile.skills : [];
+  const mergedSkills = [...profileSkillsArr, ...allSkills.filter(s => !profileSkillsArr.includes(s))];
+
+  const [rd, setRd] = useState({
+    name: profile.name,
+    headline: profile.headline ?? "",
+    location: profile.location ?? "",
+    field: profile.field ?? "",
+    bio: profile.bio ?? "",
+    skills: mergedSkills,
+    work: initialWork.map(w => ({ ...w })),
+    edu: initialEdu.map(e => ({ ...e })),
+    honours: initialHonours.map(h => ({ ...h })),
+    entries: initialEntries.map(e => ({ ...e })),
+  });
+  const [skillInput, setSkillInput] = useState("");
+
+  const upd = (key: keyof typeof rd, val: unknown) =>
+    setRd(prev => ({ ...prev, [key]: val }));
+  const updWork = (i: number, key: string, val: string) =>
+    setRd(prev => { const w = [...prev.work]; (w[i] as any)[key] = val; return { ...prev, work: w }; });
+  const updEdu = (i: number, key: string, val: string) =>
+    setRd(prev => { const e = [...prev.edu]; (e[i] as any)[key] = val; return { ...prev, edu: e }; });
+  const updHonour = (i: number, key: string, val: string) =>
+    setRd(prev => { const h = [...prev.honours]; (h[i] as any)[key] = val; return { ...prev, honours: h }; });
+  const updEntry = (i: number, val: string) =>
+    setRd(prev => { const e = [...prev.entries]; e[i] = { ...e[i], polished_entry: val }; return { ...prev, entries: e }; });
+
+  const addSkill = () => {
+    const t = skillInput.trim();
+    if (!t || rd.skills.includes(t)) { setSkillInput(""); return; }
+    upd("skills", [...rd.skills, t]);
+    setSkillInput("");
+  };
+  const removeSkill = (s: string) => upd("skills", rd.skills.filter(x => x !== s));
+
+  // ── PDF generation (uses rd state) ─────────────────────────────
+  const fmt = (d: string) => {
+    const [y, m] = d.split("-");
+    if (!m) return y;
+    return new Date(Number(y), Number(m) - 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  };
+  const dr = (start: string, end: string | null) => `${fmt(start)} – ${end ? fmt(end) : "Present"}`;
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const sub = (t: string) =>
+    `<h2 style="font-size:10.5px;font-weight:900;text-transform:uppercase;letter-spacing:0.12em;border-bottom:1px solid #111;margin:0 0 6px 0;padding-bottom:2px;">${esc(t)}</h2>`;
+
+  const handlePrint = () => {
+    const workHtml = rd.work.map(w => {
+      const bullets = w.description
+        ? w.description.split(/\n|\u2022/).map(l => l.trim()).filter(Boolean)
+            .map(l => `<li style="font-size:11.5px;color:#333;margin-bottom:2px;">${esc(l)}</li>`).join("")
+        : "";
+      return `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <strong style="font-size:12.5px;">${esc(w.title)}</strong>
+          <span style="font-size:10.5px;color:#555;flex-shrink:0;margin-left:8px;">${dr(w.start_date, w.end_date)}</span>
+        </div>
+        <div style="font-size:11.5px;font-style:italic;color:#555;">${esc(w.company)}</div>
+        ${bullets ? `<ul style="margin:4px 0 0 12px;padding:0;">${bullets}</ul>` : ""}
+      </div>`;
+    }).join("");
+
+    const eduHtml = rd.edu.map(e => `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+        <div>
+          <strong style="font-size:12.5px;">${esc(e.institution)}</strong>
+          <div style="font-size:11.5px;font-style:italic;color:#555;">${esc(e.degree)}</div>
+        </div>
+        <span style="font-size:10.5px;color:#555;flex-shrink:0;margin-left:8px;">${dr(e.start_date, e.end_date)}</span>
+      </div>`).join("");
+
+    const honoursHtml = rd.honours.map(h => `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <div>
+          <strong style="font-size:12px;">${esc(h.title)}</strong>
+          ${h.issuer ? `<span style="font-size:11.5px;color:#555;"> – ${esc(h.issuer)}</span>` : ""}
+        </div>
+        ${h.award_date ? `<span style="font-size:10.5px;color:#555;flex-shrink:0;margin-left:8px;">${fmt(h.award_date)}</span>` : ""}
+      </div>`).join("");
+
+    const entriesHtml = rd.entries.map(entry => `
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <strong style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.05em;color:#444;">${esc(entry.category)}</strong>
+          <span style="font-size:10.5px;color:#666;flex-shrink:0;margin-left:8px;">${esc(formatDate(entry.entry_date))}</span>
+        </div>
+        <p style="font-size:11.5px;color:#333;margin:2px 0 0 0;line-height:1.5;">${esc(entry.polished_entry)}</p>
+        ${entry.skills.length > 0 ? `<p style="font-size:10.5px;color:#666;margin:2px 0 0 0;"><em>Skills:</em> ${esc(entry.skills.join(", "))}</p>` : ""}
+      </div>`).join("");
+
+    const contactParts = [rd.location, rd.field, rd.headline].filter(Boolean).map(esc);
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>${esc(rd.name)} – Resume</title>
+<style>* { box-sizing:border-box;margin:0;padding:0; } body { font-family:Arial,Helvetica,sans-serif;font-size:12.5px;color:#111;padding:36px 48px;line-height:1.45; } @media print { body { padding:24px 36px; } }</style>
+</head><body>
+<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px;">
+  <h1 style="font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:-0.02em;">${esc(rd.name)}</h1>
+  <div style="font-size:11px;color:#555;margin-top:4px;">${contactParts.join(" &bull; ")}</div>
+</div>
+${rd.bio ? `<div style="margin-bottom:14px;">${sub("Summary")}<p style="font-size:11.5px;color:#444;line-height:1.55;">${esc(rd.bio)}</p></div>` : ""}
+${rd.work.length > 0 ? `<div style="margin-bottom:14px;">${sub("Work Experience")}${workHtml}</div>` : ""}
+${rd.edu.length > 0 ? `<div style="margin-bottom:14px;">${sub("Education")}${eduHtml}</div>` : ""}
+${rd.skills.length > 0 ? `<div style="margin-bottom:14px;">${sub("Skills")}<p style="font-size:11.5px;color:#333;">${rd.skills.map(esc).join(" &bull; ")}</p></div>` : ""}
+${rd.honours.length > 0 ? `<div style="margin-bottom:14px;">${sub("Honours &amp; Awards")}${honoursHtml}</div>` : ""}
+${rd.entries.length > 0 ? `<div>${sub("Projects &amp; Activities")}${entriesHtml}</div>` : ""}
+</body></html>`;
+
+    const win = window.open("", "_blank", "width=860,height=1100");
+    if (!win) { alert("Please allow pop-ups to download the resume PDF."); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[100] bg-black/60 flex items-start justify-center overflow-y-auto py-8 px-4"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        {/* Modal shell */}
+        <div className="bg-white w-full max-w-[720px] shadow-2xl rounded-sm relative">
+
+          {/* Toolbar */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-gray-50 rounded-t-sm">
+            <span className="text-[13px] font-bold text-gray-600">Resume Preview <span className="text-[11px] font-normal text-gray-400">— click any text to edit</span></span>
+            <div className="flex items-center gap-2">
+              <button onClick={handlePrint} className="flex items-center gap-1.5 bg-[#ffc000] text-[#424242] text-[12px] font-bold px-4 py-1.5 rounded-full hover:bg-[#e3ab00] transition-all cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download PDF
+              </button>
+              <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-700 text-[20px] leading-none transition-colors px-1">×</button>
+            </div>
+          </div>
+
+          {/* ── RESUME BODY ── */}
+          <div className="px-10 py-8 font-[Arial,Helvetica,sans-serif] text-[#111] text-[13px] leading-[1.45]">
+
+            {/* Header */}
+            <div className="text-center border-b-2 border-[#111] pb-3 mb-4">
+              <h1 className="text-[26px] font-black tracking-tight uppercase">
+                <E value={rd.name} onChange={v => upd("name", v)} />
+              </h1>
+              <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 mt-1 text-[11.5px] text-gray-600">
+                <E value={rd.location} onChange={v => upd("location", v)} className="text-gray-600" />
+                {rd.location && (rd.field || rd.headline) && <span className="text-gray-400 select-none">•</span>}
+                <E value={rd.field} onChange={v => upd("field", v)} className="text-gray-600" />
+                {rd.field && rd.headline && <span className="text-gray-400 select-none">•</span>}
+                <E value={rd.headline} onChange={v => upd("headline", v)} className="text-gray-600" />
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="mb-4">
+              <h2 className="text-[11px] font-black uppercase tracking-[0.12em] border-b border-[#111] mb-1.5">Summary</h2>
+              <E value={rd.bio} onChange={v => upd("bio", v)} block className="text-[12px] leading-relaxed text-gray-700 min-h-[1em]" />
+            </div>
+
+            {/* Work Experience */}
+            {rd.work.length > 0 && (
+              <div className="mb-4">
+                <h2 className="text-[11px] font-black uppercase tracking-[0.12em] border-b border-[#111] mb-2">Work Experience</h2>
+                <div className="space-y-3">
+                  {rd.work.map((w, i) => (
+                    <div key={w.id}>
+                      <div className="flex justify-between items-baseline">
+                        <E value={w.title} onChange={v => updWork(i, "title", v)} className="font-black text-[13px]" />
+                        <span className="text-[11px] text-gray-500 flex-shrink-0 ml-2">{dr(w.start_date, w.end_date)}</span>
+                      </div>
+                      <E value={w.company} onChange={v => updWork(i, "company", v)} className="text-[12px] font-bold text-gray-600 italic" />
+                      <E value={w.description ?? ""} onChange={v => updWork(i, "description", v)} block className="text-[12px] text-gray-700 mt-1 leading-relaxed min-h-[1em] whitespace-pre-wrap" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Education */}
+            {rd.edu.length > 0 && (
+              <div className="mb-4">
+                <h2 className="text-[11px] font-black uppercase tracking-[0.12em] border-b border-[#111] mb-2">Education</h2>
+                <div className="space-y-2">
+                  {rd.edu.map((e, i) => (
+                    <div key={e.id} className="flex justify-between items-baseline">
+                      <div>
+                        <E value={e.institution} onChange={v => updEdu(i, "institution", v)} className="font-black text-[13px]" />
+                        <E value={e.degree} onChange={v => updEdu(i, "degree", v)} block className="text-[12px] text-gray-600 italic" />
+                      </div>
+                      <span className="text-[11px] text-gray-500 flex-shrink-0 ml-2">{dr(e.start_date, e.end_date)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Skills */}
+            <div className="mb-4">
+              <h2 className="text-[11px] font-black uppercase tracking-[0.12em] border-b border-[#111] mb-2">Skills</h2>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {rd.skills.map(s => (
+                  <span key={s} className="flex items-center gap-1 bg-gray-100 text-gray-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                    {s}
+                    <button onClick={() => removeSkill(s)} className="text-gray-400 hover:text-red-500 text-[10px] leading-none cursor-pointer ml-0.5" aria-label={`Remove ${s}`}>✕</button>
+                  </span>
+                ))}
+                <form onSubmit={e => { e.preventDefault(); addSkill(); }} className="flex items-center gap-1">
+                  <input
+                    value={skillInput}
+                    onChange={e => setSkillInput(e.target.value)}
+                    placeholder="Add…"
+                    className="text-[11px] border border-gray-300 rounded-full px-2.5 py-1 w-20 outline-none focus:border-[#ffc000]"
+                  />
+                  <button type="submit" disabled={!skillInput.trim()} className="w-5 h-5 rounded-full bg-gray-200 hover:bg-[#ffc000] text-gray-600 text-[12px] font-black leading-none flex items-center justify-center disabled:opacity-30 cursor-pointer transition-all">+</button>
+                </form>
+              </div>
+            </div>
+
+            {/* Honours & Awards */}
+            {rd.honours.length > 0 && (
+              <div className="mb-4">
+                <h2 className="text-[11px] font-black uppercase tracking-[0.12em] border-b border-[#111] mb-2">Honours &amp; Awards</h2>
+                <div className="space-y-1.5">
+                  {rd.honours.map((h, i) => (
+                    <div key={h.id} className="flex justify-between items-baseline">
+                      <div>
+                        <E value={h.title} onChange={v => updHonour(i, "title", v)} className="font-black text-[12.5px]" />
+                        {h.issuer !== undefined && (
+                          <><span className="text-gray-500 text-[12px]"> – </span><E value={h.issuer} onChange={v => updHonour(i, "issuer", v)} className="text-[12px] text-gray-600" /></>
+                        )}
+                      </div>
+                      {h.award_date && <span className="text-[11px] text-gray-500 flex-shrink-0 ml-2">{fmt(h.award_date)}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Projects & Activities */}
+            {rd.entries.length > 0 && (
+              <div>
+                <h2 className="text-[11px] font-black uppercase tracking-[0.12em] border-b border-[#111] mb-2">Projects &amp; Activities</h2>
+                <div className="space-y-2.5">
+                  {rd.entries.map((entry, i) => (
+                    <div key={entry.id}>
+                      <div className="flex justify-between items-baseline">
+                        <span className="font-black text-[12px] uppercase tracking-wide text-gray-700">{entry.category}</span>
+                        <span className="text-[11px] text-gray-500 flex-shrink-0 ml-2">{formatDate(entry.entry_date)}</span>
+                      </div>
+                      <E value={entry.polished_entry} onChange={v => updEntry(i, v)} block className="text-[12px] text-gray-700 leading-relaxed mt-0.5 min-h-[1em] whitespace-pre-wrap" />
+                      {entry.skills.length > 0 && (
+                        <p className="text-[11px] text-gray-500 mt-0.5"><em>Skills:</em> {entry.skills.join(", ")}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function PublicPortfolioClient({
   username,
@@ -531,6 +847,8 @@ export default function PublicPortfolioClient({
   const [educationItems, setEducationItems] = useState<Education[]>(initialEducation);
   const [honoursItems, setHonoursItems] = useState<HonourAward[]>(initialHonours);
 
+  const [showResumePreview, setShowResumePreview] = useState(false);
+
   const isOwner = user?.username === username;
 
   const copyUrl = () => {
@@ -538,12 +856,7 @@ export default function PublicPortfolioClient({
     showToast("Portfolio link copied!", "success");
   };
 
-  const downloadResume = () => {
-    const prev = document.title;
-    document.title = `${profile.name} – Resume`;
-    window.print();
-    document.title = prev;
-  };
+  const openResumePreview = () => setShowResumePreview(true);
 
   const regenerateBio = async () => {
     setGeneratingBio(true);
@@ -604,12 +917,12 @@ export default function PublicPortfolioClient({
                     <span aria-hidden="true">🔗</span> Copy link
                   </button>
                   <button
-                    onClick={downloadResume}
-                    className="flex-shrink-0 text-[12px] font-bold text-white bg-[#424242] px-4 py-2 rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
-                    title="Download portfolio as PDF resume"
+                    onClick={openResumePreview}
+                    className="flex-shrink-0 text-[12px] font-bold text-[#424242] bg-[#ffc000] px-4 py-2 rounded-full hover:bg-[#e3ab00] cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
+                    title="Preview and download resume as PDF"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Resume PDF
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    Preview PDF
                   </button>
                 </div>
               </div>
@@ -720,6 +1033,18 @@ export default function PublicPortfolioClient({
       </main>
 
       <Footer />
+
+      {showResumePreview && (
+        <ResumePreviewModal
+          profile={profile}
+          entries={entries}
+          allSkills={allSkills}
+          workExperience={workExpItems}
+          education={educationItems}
+          honours={honoursItems}
+          onClose={() => setShowResumePreview(false)}
+        />
+      )}
     </div>
   );
 }
