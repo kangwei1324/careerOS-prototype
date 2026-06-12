@@ -43,13 +43,13 @@ export async function POST(req: NextRequest) {
   const db = getDb();
 
   if (session.role === "candidate") {
-    const { name, headline, location, field, experience_years, skills, socials } = body;
+    const { name, headline, location, field, experience_years, skills, socials, bio } = body;
     // Store experience_years as a string so values like "10+" survive the round-trip
     const expYears = experience_years != null ? String(experience_years) : "0";
     db.prepare(
       `UPDATE candidate_profiles
        SET name = ?, headline = ?, location = ?, field = ?,
-           experience_years = ?, skills_json = ?, socials_json = ?, updated_at = datetime('now')
+           experience_years = ?, skills_json = ?, socials_json = ?, bio = ?, updated_at = datetime('now')
        WHERE user_id = ?`
     ).run(
       name ?? "",
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
       expYears,
       JSON.stringify(skills ?? []),
       JSON.stringify(socials ?? {}),
+      bio ?? "",
       session.userId
     );
   } else {

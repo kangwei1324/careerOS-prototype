@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { MediaEditor, LinksEditor, PinSelector, type PinOption, type PinType } from "@/components/portfolio/EntryEditors";
 import { CATEGORY_COLOURS, type EntryMedia, type EntryLink, type PortfolioEntry, type WorkExperience, type Education, type HonourAward } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { Lightbox } from "@/components/ui/Lightbox";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,9 @@ export default function ManagePortfolioPage() {
 
   const [deleting, setDeleting] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  // Lightbox
+  const [lightbox, setLightbox] = useState<{ media: EntryMedia[]; startIndex: number } | null>(null);
 
   // Parent entries for pin selector
   const [workItems, setWorkItems]       = useState<WorkExperience[]>([]);
@@ -284,11 +288,16 @@ export default function ManagePortfolioPage() {
                   {!isEditing && entry.media && entry.media.length > 0 && (
                     <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                       {entry.media.map((m, i) => (
-                        <div key={i} className="flex-shrink-0 w-36 rounded-lg overflow-hidden border border-[#424242]/10">
+                        <button
+                          key={i}
+                          onClick={() => setLightbox({ media: entry.media!, startIndex: i })}
+                          className="flex-shrink-0 w-36 rounded-lg overflow-hidden border border-[#424242]/10 hover:border-[#ffc000]/50 transition-all focus:outline-none focus:ring-2 focus:ring-[#ffc000] group"
+                          aria-label={m.caption || `View image ${i + 1} fullscreen`}
+                        >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={m.url} alt={m.caption || "proof image"} className="w-36 h-24 object-cover" />
-                          {m.caption && <p className="text-[10px] text-[#424242]/50 px-2 py-1 truncate">{m.caption}</p>}
-                        </div>
+                          <img src={m.url} alt={m.caption || "proof image"} className="w-36 h-24 object-cover group-hover:scale-105 transition-transform duration-200" />
+                          {m.caption && <p className="text-[10px] text-[#424242]/50 px-2 py-1 truncate text-left">{m.caption}</p>}
+                        </button>
                       ))}
                     </div>
                   )}
@@ -336,6 +345,14 @@ export default function ManagePortfolioPage() {
         </div>
       </main>
       <Footer />
+
+      {lightbox && (
+        <Lightbox
+          media={lightbox.media}
+          startIndex={lightbox.startIndex}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }

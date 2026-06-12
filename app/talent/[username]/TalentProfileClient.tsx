@@ -5,8 +5,14 @@ import { useAuthStore } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
-import { CATEGORY_COLOURS, type PortfolioEntry } from "@/lib/types";
+import { CATEGORY_COLOURS, type EntryMedia, type PortfolioEntry, type WorkExperience, type Education, type HonourAward } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { Lightbox } from "@/components/ui/Lightbox";
+import {
+  WorkExperienceSection,
+  EducationSection,
+  HonoursSection,
+} from "@/components/portfolio/ResumeSections";
 
 interface Profile {
   name: string;
@@ -27,6 +33,9 @@ export default function TalentProfileClient({
   username,
   profile,
   entries,
+  workExperience,
+  education,
+  honours,
   interestCount,
   initialInterested,
 }: {
@@ -34,6 +43,9 @@ export default function TalentProfileClient({
   username: string;
   profile: Profile;
   entries: PortfolioEntry[];
+  workExperience: WorkExperience[];
+  education: Education[];
+  honours: HonourAward[];
   interestCount: number;
   initialInterested: boolean;
 }) {
@@ -42,6 +54,14 @@ export default function TalentProfileClient({
   const [interested, setInterested] = useState(initialInterested);
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState(interestCount);
+
+  // Lightbox state
+  const [lightbox, setLightbox] = useState<{ media: EntryMedia[]; startIndex: number } | null>(null);
+  const openLightbox = (media: EntryMedia[], startIndex: number) => setLightbox({ media, startIndex });
+
+  // Split entries into pinned (belong under a section) vs. standalone
+  const pinnedEntries = entries.filter((e) => e.pinned_type && e.pinned_id);
+  const unpinnedEntries = entries.filter((e) => !e.pinned_type || !e.pinned_id);
 
   const allSkills = Array.from(new Set(entries.flatMap((e) => e.skills)));
 
@@ -212,36 +232,124 @@ export default function TalentProfileClient({
           </div>
         )}
 
-        {/* Portfolio timeline */}
-        <section>
-          <h2 className="text-[11px] font-black uppercase tracking-widest text-[#424242]/40 mb-4 border-b border-[#424242]/8 pb-2">
-            Portfolio ({entries.length} {entries.length === 1 ? "entry" : "entries"})
-          </h2>
-          <div className="space-y-4">
-            {entries.map((entry) => (
-              <div key={entry.id} className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${CATEGORY_COLOURS[entry.category] ?? CATEGORY_COLOURS.Other}`}>
-                    {entry.category}
-                  </span>
-                  <span className="text-[10px] text-[#424242]/40">{formatDate(entry.entry_date)}</span>
-                </div>
-                <p className="text-[13px] text-[#424242]/70 leading-relaxed">{entry.polished_entry}</p>
-                {entry.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {entry.skills.map((s) => (
-                      <span key={s} className="bg-[#424242]/8 text-[#424242]/55 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                        {s}
-                      </span>
-                    ))}
+        {/* Work Experience */}
+        <WorkExperienceSection
+          items={workExperience}
+          isOwner={false}
+          onAdd={() => {}}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          pinnedEntries={pinnedEntries}
+          onOpenLightbox={openLightbox}
+        />
+
+        {/* Education */}
+        <EducationSection
+          items={education}
+          isOwner={false}
+          onAdd={() => {}}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          pinnedEntries={pinnedEntries}
+          onOpenLightbox={openLightbox}
+        />
+
+        {/* Honours & Awards */}
+        <HonoursSection
+          items={honours}
+          isOwner={false}
+          onAdd={() => {}}
+          onEdit={() => {}}
+          onDelete={() => {}}
+          pinnedEntries={pinnedEntries}
+          onOpenLightbox={openLightbox}
+        />
+
+        {/* Activity Log — unpinned entries only */}
+        {unpinnedEntries.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4 border-b border-[#424242]/10 pb-2">
+              <h2 className="text-[15px] font-black text-[#424242]">Activity Log</h2>
+              <span className="text-[12px] text-[#424242]/40">{unpinnedEntries.length} {unpinnedEntries.length === 1 ? "entry" : "entries"}</span>
+            </div>
+
+            <div className="space-y-4">
+              {unpinnedEntries.map((entry) => (
+                <div key={entry.id} className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${CATEGORY_COLOURS[entry.category] ?? CATEGORY_COLOURS.Other}`}>
+                      {entry.category}
+                    </span>
+                    <span className="text-[10px] text-[#424242]/40">{formatDate(entry.entry_date)}</span>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+                  <p className="text-[13px] text-[#424242]/70 leading-relaxed">{entry.polished_entry}</p>
+                  
+                  {/* Image strip */}
+                  {entry.media && entry.media.length > 0 && (
+                    <div className="flex gap-2.5 mt-4 overflow-x-auto pb-1 -mx-1 px-1">
+                      {entry.media.map((m, i) => (
+                        <button
+                          key={i}
+                          onClick={() => openLightbox(entry.media, i)}
+                          className="flex-shrink-0 w-40 rounded-xl overflow-hidden border border-[#424242]/10 hover:border-[#ffc000]/50 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ffc000] group"
+                          aria-label={m.caption || `View image ${i + 1} fullscreen`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={m.url}
+                            alt={m.caption || "proof image"}
+                            className="w-40 h-28 object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                          {m.caption && (
+                            <p className="text-[10px] text-[#424242]/50 px-2.5 py-1.5 truncate text-left">{m.caption}</p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Proof links */}
+                  {entry.links && entry.links.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {entry.links.map((l, i) => (
+                        <a
+                          key={i}
+                          href={l.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#424242]/60 bg-[#424242]/6 hover:bg-[#ffc000]/20 hover:text-[#424242] px-3 py-1.5 rounded-full transition-all border border-[#424242]/10"
+                        >
+                          🔗 {l.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Skills */}
+                  {entry.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {entry.skills.map((s) => (
+                        <span key={s} className="bg-[#424242]/8 text-[#424242]/55 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
       <Footer />
+
+      {lightbox && (
+        <Lightbox
+          media={lightbox.media}
+          startIndex={lightbox.startIndex}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }

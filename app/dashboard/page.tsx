@@ -73,9 +73,11 @@ function CandidateDashboard({ username }: { username: string }) {
   };
 
   const removeSkill = (s: string) => {
-    const updated = primarySkills.filter((x) => x !== s);
-    setPrimarySkills(updated);
-    saveSkills(updated);
+    if (window.confirm(`Are you sure you want to remove ${s}?`)) {
+      const updated = primarySkills.filter((x) => x !== s);
+      setPrimarySkills(updated);
+      saveSkills(updated);
+    }
   };
 
   const dismissAiSkill = (s: string) => setDismissedAi((prev) => [...prev, s]);
@@ -118,12 +120,14 @@ function CandidateDashboard({ username }: { username: string }) {
           </div>
           <p className="text-white/40 text-[13px] mt-1">{entries.length} portfolio {entries.length === 1 ? "entry" : "entries"} logged</p>
         </div>
-        <Link
-          href="/profile/edit"
-          className="bg-[#ffc000] text-[#424242] text-[13px] font-black px-5 py-2.5 rounded-full hover:bg-[#e6ac00] transition-all whitespace-nowrap flex-shrink-0"
-        >
-          ✏️ Edit profile
-        </Link>
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <Link
+            href={`/portfolio/${username}`}
+            className="bg-white/10 hover:bg-white/20 text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all whitespace-nowrap"
+          >
+            View my profile →
+          </Link>
+        </div>
       </div>
 
       {/* Stats row */}
@@ -170,15 +174,15 @@ function CandidateDashboard({ username }: { username: string }) {
           <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50 mb-4">Employer signals</h2>
           <div className="space-y-3">
             {signals.employers.map((s, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-[#424242] rounded-lg flex items-center justify-center text-white text-[10px] font-black flex-shrink-0" aria-hidden="true">
+              <Link key={i} href={`/company/${s.username}`} className="flex items-center gap-3 group hover:bg-[#f7f7f7] p-2 -m-2 rounded-lg transition-colors">
+                <div className="w-8 h-8 bg-[#424242] rounded-lg flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 group-hover:bg-[#ffc000] group-hover:text-[#424242] transition-colors" aria-hidden="true">
                   {s.company_name.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-[#424242]">{s.company_name}</p>
+                  <p className="text-[13px] font-bold text-[#424242] group-hover:underline">{s.company_name}</p>
                   <p className="text-[11px] text-[#424242]/50">Expressed interest</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

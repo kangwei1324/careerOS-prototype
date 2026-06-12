@@ -49,6 +49,7 @@ export interface HonourAward {
 export interface Signal {
   company_name: string;
   created_at: string;
+  username: string;
 }
 
 export interface CandidateProfile {

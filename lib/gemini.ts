@@ -66,11 +66,8 @@ Respond ONLY in this exact JSON format, no markdown:
   const raw = await generate(prompt);
   console.log("[gemini/generatePortfolioEntry] raw:", raw);
   try {
-    // Strip all markdown code fence variants: ```json, ```JSON, ``` etc.
-    const cleaned = raw
-      .replace(/^```[a-zA-Z]*\s*/m, "") // opening fence
-      .replace(/```\s*$/m, "")           // closing fence
-      .trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    const cleaned = match ? match[0] : raw;
     const parsed = JSON.parse(cleaned);
     return {
       entry: parsed.entry ?? "",
@@ -172,10 +169,8 @@ Respond ONLY in valid JSON with no markdown fences:
   const raw = await generate(prompt);
   console.log("[gemini/classifyAndGenerateEntry] raw:", raw.slice(0, 300));
   try {
-    const cleaned = raw
-      .replace(/^```[a-zA-Z]*\s*/m, "")
-      .replace(/```\s*$/m, "")
-      .trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    const cleaned = match ? match[0] : raw;
     const parsed = JSON.parse(cleaned);
     return {
       section: parsed.section ?? (isAuto ? "activity_log" : sectionHint),
@@ -268,7 +263,8 @@ Respond ONLY in this exact JSON format, no markdown:
 
   const raw = await generate(prompt);
   try {
-    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const match = raw.match(/\[[\s\S]*\]/);
+    const cleaned = match ? match[0] : raw;
     return JSON.parse(cleaned) as CareerPath[];
   } catch {
     return [];
@@ -305,10 +301,8 @@ Respond ONLY with a valid JSON array of objects matching this exact format, with
 
   const raw = await generate(prompt);
   try {
-    const cleaned = raw
-      .replace(/^```[a-zA-Z]*\s*/m, "")
-      .replace(/```\s*$/m, "")
-      .trim();
+    const match = raw.match(/\[[\s\S]*\]/);
+    const cleaned = match ? match[0] : raw;
     return JSON.parse(cleaned) as SuggestionResult[];
   } catch (e) {
     console.error("[gemini/suggestCandidates] parse failed:", e, "raw was:", raw);

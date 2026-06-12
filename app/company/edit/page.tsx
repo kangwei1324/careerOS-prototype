@@ -7,7 +7,7 @@ import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
-import { MALAYSIA_LOCATIONS, FIELDS_AND_SKILLS } from "@/lib/referenceData";
+import { MALAYSIA_LOCATIONS, INDUSTRIES } from "@/lib/referenceData";
 
 const inputCls =
   "w-full border border-[#424242]/15 rounded-xl px-4 py-2.5 text-[13px] text-[#424242] outline-none focus:border-[#ffc000] transition-colors bg-white";
@@ -21,27 +21,25 @@ function Label({ children, required }: { children: React.ReactNode, required?: b
   );
 }
 
-export default function EditProfilePage() {
+export default function EditCompanyProfilePage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showFieldDropdown, setShowFieldDropdown] = useState(false);
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
 
   const [form, setForm] = useState({
-    name: "",
-    headline: "",
+    company_name: "",
+    industry: "",
     state: "",
     city: "",
-    field: "",
-    experience_years: "0",
-    bio: "",
+    description: "",
+    company_description: "",
     website: "",
     linkedin: "",
-    github: "",
-    skills: [] as string[],
+    twitter: "",
   });
 
   const hydrated = useHasHydrated();
@@ -50,7 +48,7 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (!hydrated) return;
     if (!user) { router.push("/auth/signin"); return; }
-    if (user.role !== "candidate") { router.push("/dashboard"); return; }
+    if (user.role !== "employer") { router.push("/dashboard"); return; }
 
     fetch("/api/onboarding")
       .then((r) => r.json())
@@ -67,17 +65,15 @@ export default function EditProfilePage() {
           }
 
           setForm({
-            name: p.name ?? "",
-            headline: p.headline ?? "",
+            company_name: p.company_name ?? "",
+            industry: p.industry ?? "",
             state,
             city,
-            field: p.field ?? "",
-            experience_years: String(p.experience_years ?? "0"),
-            bio: p.bio ?? "",
+            description: p.description ?? "",
+            company_description: p.company_description ?? "",
             website: p.socials?.website ?? "",
             linkedin: p.socials?.linkedin ?? "",
-            github: p.socials?.github ?? "",
-            skills: Array.isArray(p.skills) ? p.skills : [],
+            twitter: p.socials?.twitter ?? "",
           });
         }
       })
@@ -88,8 +84,8 @@ export default function EditProfilePage() {
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
-    if (!form.name || !form.field) {
-      showToast("Name and Field are required.", "error");
+    if (!form.company_name || !form.industry) {
+      showToast("Company Name and Industry are required.", "error");
       return;
     }
 
@@ -101,24 +97,22 @@ export default function EditProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
-          headline: form.headline,
+          company_name: form.company_name,
+          industry: form.industry,
           location: locationVal,
-          field: form.field,
-          experience_years: form.experience_years,
-          bio: form.bio,
-          skills: form.skills, // preserve existing skills
+          description: form.description,
+          company_description: form.company_description,
           socials: {
             website: form.website,
             linkedin: form.linkedin,
-            github: form.github,
+            twitter: form.twitter,
           },
         }),
       });
 
       if (!res.ok) throw new Error();
-      showToast("Profile updated ✓", "success");
-      router.push(`/portfolio/${user?.username}`);
+      showToast("Company profile updated ✓", "success");
+      router.push(`/company/${user?.username}`);
     } catch {
       showToast("Failed to save. Try again.", "error");
     } finally {
@@ -126,9 +120,8 @@ export default function EditProfilePage() {
     }
   };
 
-  const ALL_FIELDS = Object.keys(FIELDS_AND_SKILLS);
-  const filteredFields = ALL_FIELDS.filter((f) =>
-    f.toLowerCase().includes(form.field.toLowerCase())
+  const filteredIndustries = INDUSTRIES.filter((ind) =>
+    ind.toLowerCase().includes(form.industry.toLowerCase())
   );
 
   if (!hydrated || !user || loading) {
@@ -150,10 +143,10 @@ export default function EditProfilePage() {
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-12">
         <div className="w-full max-w-2xl mb-6">
           <Link
-            href="/dashboard"
+            href={`/company/${user.username}`}
             className="text-[12px] font-bold text-[#424242]/40 hover:text-[#424242] transition-colors flex items-center gap-1"
           >
-            ← Back to dashboard
+            ← Back to company profile
           </Link>
         </div>
 
@@ -163,54 +156,43 @@ export default function EditProfilePage() {
               Edit profile
             </p>
             <h1 className="text-[22px] font-black text-[#424242]">
-              Your details
+              Company details
             </h1>
           </div>
 
           <div className="space-y-5 animate-fade-in">
-            {/* Name */}
+            {/* Company Name */}
             <div>
-              <Label required>Full Name</Label>
+              <Label required>Company Name</Label>
               <input
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-                placeholder="Jane Doe"
+                value={form.company_name}
+                onChange={(e) => update("company_name", e.target.value)}
+                placeholder="Acme Corp"
                 className={inputCls}
               />
             </div>
 
-            {/* Headline */}
-            <div>
-              <Label>Professional Headline</Label>
-              <input
-                value={form.headline}
-                onChange={(e) => update("headline", e.target.value)}
-                placeholder="e.g. Frontend Engineer crafting beautiful UIs"
-                className={inputCls}
-              />
-            </div>
-
-            {/* Field Combobox */}
+            {/* Industry Combobox */}
             <div className="relative">
-              <Label required>Professional Field</Label>
+              <Label required>Industry</Label>
               <input
-                value={form.field}
-                onChange={(e) => update("field", e.target.value)}
-                onFocus={() => setShowFieldDropdown(true)}
-                onBlur={() => setTimeout(() => setShowFieldDropdown(false), 200)}
-                placeholder="Search and select your field..."
+                value={form.industry}
+                onChange={(e) => update("industry", e.target.value)}
+                onFocus={() => setShowIndustryDropdown(true)}
+                onBlur={() => setTimeout(() => setShowIndustryDropdown(false), 200)}
+                placeholder="Search and select industry..."
                 className={inputCls}
               />
-              {showFieldDropdown && filteredFields.length > 0 && (
+              {showIndustryDropdown && filteredIndustries.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-[#424242]/15 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                  {filteredFields.map((fld) => (
+                  {filteredIndustries.map((ind) => (
                     <button
-                      key={fld}
+                      key={ind}
                       type="button"
-                      onMouseDown={() => update("field", fld)}
+                      onMouseDown={() => update("industry", ind)}
                       className="w-full text-left px-4 py-2 text-[12px] text-[#424242] hover:bg-[#ffc000]/10 transition-colors"
                     >
-                      {fld}
+                      {ind}
                     </button>
                   ))}
                 </div>
@@ -220,7 +202,7 @@ export default function EditProfilePage() {
             {/* Location (State & City) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>State</Label>
+                <Label>Office State</Label>
                 <select
                   value={form.state}
                   onChange={(e) => {
@@ -236,7 +218,7 @@ export default function EditProfilePage() {
                 </select>
               </div>
               <div>
-                <Label>City / Town</Label>
+                <Label>Office City / Town</Label>
                 <select
                   value={form.city}
                   onChange={(e) => update("city", e.target.value)}
@@ -252,44 +234,25 @@ export default function EditProfilePage() {
               </div>
             </div>
 
-            {/* Experience Years */}
+            {/* Description */}
             <div>
-              <Label>Years of Experience</Label>
-              <select
-                value={form.experience_years}
-                onChange={(e) => update("experience_years", e.target.value)}
-                className={inputCls}
-              >
-                <option value="0">Less than 1 year</option>
-                <option value="1">1 year</option>
-                <option value="2">2 years</option>
-                <option value="3">3 years</option>
-                <option value="4">4 years</option>
-                <option value="5">5 years</option>
-                <option value="6">6+ years</option>
-                <option value="10">10+ years</option>
-              </select>
-            </div>
-
-            {/* Bio */}
-            <div>
-              <Label>About You (Bio)</Label>
+              <Label>Company Description</Label>
               <textarea
-                value={form.bio}
-                onChange={(e) => update("bio", e.target.value)}
+                value={form.company_description}
+                onChange={(e) => update("company_description", e.target.value)}
                 rows={4}
-                placeholder="Tell us a bit about your background and what you're looking for..."
+                placeholder="Describe your company..."
                 className="w-full rounded-xl px-4 py-2.5 text-[13px] text-[#424242]/70 leading-relaxed resize-none outline-none border border-[#424242]/15 focus:border-[#ffc000] transition-colors bg-white"
               />
             </div>
 
             {/* Social Links */}
             <div className="border-t border-[#424242]/8 pt-4 space-y-4">
-              <h3 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/40">Your links</h3>
+              <h3 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/40">Company links</h3>
               {[
-                { label: "Personal Website / Portfolio", key: "website", placeholder: "https://yourwebsite.com" },
-                { label: "LinkedIn Profile", key: "linkedin", placeholder: "https://linkedin.com/in/username" },
-                { label: "GitHub Profile", key: "github", placeholder: "https://github.com/username" },
+                { label: "Company Website", key: "website", placeholder: "https://acme.co" },
+                { label: "LinkedIn Page", key: "linkedin", placeholder: "https://linkedin.com/company/acme" },
+                { label: "Twitter / X Profile", key: "twitter", placeholder: "https://x.com/acme" },
               ].map(({ label, key, placeholder }) => (
                 <div key={key}>
                   <Label>{label}</Label>
@@ -307,7 +270,7 @@ export default function EditProfilePage() {
             <div className="flex gap-3 pt-4 border-t border-[#424242]/8">
               <button
                 type="button"
-                onClick={() => router.push(`/portfolio/${user.username}`)}
+                onClick={() => router.push(`/company/${user.username}`)}
                 className="flex-1 border border-[#424242]/15 text-[#424242] text-[13px] font-bold py-2.5 rounded-xl hover:border-[#424242]/30 transition-all"
               >
                 Cancel
@@ -315,7 +278,7 @@ export default function EditProfilePage() {
               <button
                 type="button"
                 onClick={save}
-                disabled={saving || !form.name || !form.field}
+                disabled={saving || !form.company_name || !form.industry}
                 className="flex-1 bg-[#ffc000] text-[#424242] text-[13px] font-black py-2.5 rounded-xl hover:bg-[#e6ac00] disabled:opacity-40 transition-all"
               >
                 {saving ? "Saving..." : "Save Changes"}

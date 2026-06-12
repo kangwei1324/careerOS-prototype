@@ -38,13 +38,14 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   const interests = db
     .prepare(
-      `SELECT ep.company_name, ei.created_at
+      `SELECT ep.company_name, ei.created_at, u.username
        FROM employer_interests ei
        JOIN employer_profiles ep ON ep.user_id = ei.employer_id
+       JOIN users u ON u.id = ei.employer_id
        WHERE ei.candidate_id = ?
        ORDER BY ei.created_at DESC`
     )
-    .all(Number(candidateId)) as Array<{ company_name: string; created_at: string }>;
+    .all(Number(candidateId)) as Array<{ company_name: string; created_at: string; username: string }>;
 
   return NextResponse.json({ count: interests.length, employers: interests });
 }

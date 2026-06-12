@@ -44,7 +44,8 @@ export default function AppNavbar() {
   };
 
   const candidateLinks = [
-    { href: "/portfolio/log",    label: "Log" },
+    { href: "/dashboard",        label: "Dashboard" },
+    { href: `/portfolio/${user?.username}`, label: "Profile" },
     { href: "/portfolio/manage", label: "Portfolio" },
     { href: "/explore",          label: "Explore" },
   ];
@@ -72,6 +73,18 @@ export default function AppNavbar() {
             Career<span className="text-[#ffc000]">OS.</span>
           </Link>
 
+          {/* Center prominent button for candidate */}
+          {user?.role === "candidate" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden sm:block">
+              <Link
+                href="/portfolio/log"
+                className="bg-[#ffc000] text-[#424242] px-5 py-2 rounded-full text-[13px] font-black hover:bg-[#e6ac00] hover:scale-105 active:scale-95 transition-all shadow-sm"
+              >
+                + Log an Activity
+              </Link>
+            </div>
+          )}
+
           {/* Desktop nav */}
           <div className="hidden sm:flex items-center gap-1">
             {user && navLinks.map((link) => (
@@ -88,7 +101,7 @@ export default function AppNavbar() {
             {user && (
               <button
                 onClick={handleLogout}
-                className="text-[12px] font-bold ml-2 px-3 py-1.5 rounded-full text-red-600 hover:bg-red-500 hover:text-white transition-all"
+                className="text-[12px] font-bold ml-2 px-3 py-1.5 rounded-full text-red-600 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
               >
                 Sign out
               </button>
@@ -127,6 +140,14 @@ export default function AppNavbar() {
         {/* Mobile dropdown */}
         {menuOpen && (
           <div className="sm:hidden mt-3 pb-2 border-t border-[#424242]/8 pt-3 flex flex-col gap-1 animate-fade-in">
+            {user?.role === "candidate" && (
+              <Link
+                href="/portfolio/log"
+                className="text-center bg-[#ffc000] text-[#424242] px-4 py-2.5 rounded-full text-[13px] font-black hover:bg-[#e6ac00] mb-2 mx-2 shadow-sm transition-all"
+              >
+                + Log an Activity
+              </Link>
+            )}
             {user && navLinks.map((link) => (
               <NavLink key={link.href} href={link.href}>
                 {link.label}

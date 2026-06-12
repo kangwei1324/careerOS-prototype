@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuthStore } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
@@ -23,660 +24,14 @@ interface Profile {
   };
 }
 
-// ── Lightbox ─────────────────────────────────────────────────────────────────
+import { Lightbox } from "@/components/ui/Lightbox";
 
-function Lightbox({
-  media,
-  startIndex,
-  onClose,
-}: {
-  media: EntryMedia[];
-  startIndex: number;
-  onClose: () => void;
-}) {
-  const [idx, setIdx] = useState(startIndex);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, media.length - 1));
-      if (e.key === "ArrowLeft")  setIdx((i) => Math.max(i - 1, 0));
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [media.length, onClose]);
-
-  const current = media[idx];
-  return (
-    <div
-      className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="relative max-w-4xl w-full flex flex-col items-center gap-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={current.url}
-          alt={current.caption || "proof image"}
-          className="max-h-[80vh] max-w-full rounded-xl object-contain shadow-2xl"
-        />
-        {current.caption && (
-          <p className="text-white/70 text-[13px] text-center">{current.caption}</p>
-        )}
-        {media.length > 1 && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIdx((i) => Math.max(i - 1, 0))}
-              disabled={idx === 0}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white disabled:opacity-30 transition-all flex items-center justify-center"
-              aria-label="Previous"
-            >
-              ‹
-            </button>
-            <span className="text-white/50 text-[12px]">{idx + 1} / {media.length}</span>
-            <button
-              onClick={() => setIdx((i) => Math.min(i + 1, media.length - 1))}
-              disabled={idx === media.length - 1}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white disabled:opacity-30 transition-all flex items-center justify-center"
-              aria-label="Next"
-            >
-              ›
-            </button>
-          </div>
-        )}
-        <button
-          onClick={onClose}
-          className="absolute top-0 right-0 w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 text-white text-[18px] flex items-center justify-center transition-all"
-          aria-label="Close lightbox"
-        >
-          ×
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── PinnedActivities ─────────────────────────────────────────────────────────────
-
-function PinnedActivities({
-  entries,
-  onOpenLightbox,
-}: {
-  entries: PortfolioEntry[];
-  onOpenLightbox: (media: EntryMedia[], startIndex: number) => void;
-}) {
-  if (entries.length === 0) return null;
-
-  return (
-    <div className="mt-4 pt-4 border-t border-[#424242]/8 space-y-3">
-      <p className="text-[10px] font-black uppercase tracking-widest text-[#424242]/40">
-        Activities ({entries.length})
-      </p>
-      {entries.map((entry) => (
-        <div key={entry.id} className="bg-[#f7f7f7] rounded-xl p-4 space-y-2">
-          {/* Category + date */}
-          <div className="flex items-center gap-2">
-            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${CATEGORY_COLOURS[entry.category] ?? CATEGORY_COLOURS.Other}`}>
-              {entry.category}
-            </span>
-            <span className="text-[10px] text-[#424242]/40">{formatDate(entry.entry_date)}</span>
-          </div>
-
-          {/* Narrative */}
-          <p className="text-[12px] text-[#424242]/75 leading-relaxed">{entry.polished_entry}</p>
-
-          {/* Image strip */}
-          {entry.media && entry.media.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {entry.media.map((m, i) => (
-                <button
-                  key={i}
-                  onClick={() => onOpenLightbox(entry.media, i)}
-                  className="flex-shrink-0 w-28 rounded-lg overflow-hidden border border-[#424242]/10 hover:border-[#ffc000]/50 transition-all group"
-                  aria-label={m.caption || `View image ${i + 1}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={m.url} alt={m.caption || "proof"} className="w-28 h-20 object-cover group-hover:scale-105 transition-transform duration-200" />
-                  {m.caption && <p className="text-[9px] text-[#424242]/40 px-1.5 py-1 truncate text-left">{m.caption}</p>}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Proof links */}
-          {entry.links && entry.links.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {entry.links.map((l, i) => (
-                <a key={i} href={l.url} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[10px] font-bold text-[#424242]/55 bg-white hover:bg-[#ffc000]/20 hover:text-[#424242] px-2.5 py-1 rounded-full transition-all border border-[#424242]/10">
-                  🔗 {l.label}
-                </a>
-              ))}
-            </div>
-          )}
-
-          {/* Skills */}
-          {entry.skills.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {entry.skills.map((s) => (
-                <span key={s} className="bg-[#424242]/6 text-[#424242]/45 text-[9px] font-bold px-2 py-0.5 rounded-full">{s}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function formatDateRange(start: string, end: string | null): string {
-  const fmt = (d: string) => {
-    const [y, m] = d.split("-");
-    if (!m) return y;
-    return new Date(Number(y), Number(m) - 1).toLocaleDateString("en-US", {
-      month: "short",
-      year: "numeric",
-    });
-  };
-  return `${fmt(start)} – ${end ? fmt(end) : "Present"}`;
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function SectionHeader({
-  title,
-  isOwner,
-  onAdd,
-}: {
-  title: string;
-  isOwner: boolean;
-  onAdd: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between mb-4 border-b border-[#424242]/10 pb-2">
-      <h2 className="text-[15px] font-black text-[#424242]">{title}</h2>
-      {isOwner && (
-        <button
-          onClick={onAdd}
-          className="flex items-center gap-1 text-[12px] font-black text-[#b38600] hover:text-[#e6ac00] transition-colors"
-        >
-          ADD ENTRY <span className="text-[16px] leading-none">+</span>
-        </button>
-      )}
-    </div>
-  );
-}
-
-function FormModal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[15px] font-black text-[#424242]">{title}</h3>
-          <button
-            onClick={onClose}
-            className="text-[#424242]/40 hover:text-[#424242] text-[20px] leading-none transition-colors"
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function InputField({
-  label,
-  id,
-  type = "text",
-  value,
-  onChange,
-  placeholder,
-  required,
-}: {
-  label: string;
-  id: string;
-  type?: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  required?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-[11px] font-black uppercase tracking-widest text-[#424242]/50">
-        {label}{required && <span className="text-[#ffc000] ml-0.5">*</span>}
-      </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="border border-[#424242]/15 rounded-lg px-3 py-2 text-[13px] text-[#424242] outline-none focus:border-[#ffc000]/60 focus:ring-2 focus:ring-[#ffc000]/10 transition-all"
-      />
-    </div>
-  );
-}
-
-function TextAreaField({
-  label,
-  id,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  id: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-[11px] font-black uppercase tracking-widest text-[#424242]/50">
-        {label}
-      </label>
-      <textarea
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={3}
-        className="border border-[#424242]/15 rounded-lg px-3 py-2 text-[13px] text-[#424242] outline-none focus:border-[#ffc000]/60 focus:ring-2 focus:ring-[#ffc000]/10 transition-all resize-none"
-      />
-    </div>
-  );
-}
-
-function SubmitButton({ saving }: { saving: boolean }) {
-  return (
-    <button
-      type="submit"
-      disabled={saving}
-      className="w-full bg-[#ffc000] text-[#424242] text-[13px] font-black py-2.5 rounded-full hover:bg-[#e6ac00] disabled:opacity-50 transition-all"
-    >
-      {saving ? "Saving…" : "Save Entry"}
-    </button>
-  );
-}
-
-// ── Work Experience ──────────────────────────────────────────────────────────
-
-function WorkExperienceSection({
-  items,
-  isOwner,
-  onAdd,
-  onDelete,
-  pinnedEntries,
-  onOpenLightbox,
-}: {
-  items: WorkExperience[];
-  isOwner: boolean;
-  onAdd: (item: WorkExperience) => void;
-  onDelete: (id: number) => void;
-  pinnedEntries: PortfolioEntry[];
-  onOpenLightbox: (media: EntryMedia[], startIndex: number) => void;
-}) {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", company: "", start_date: "", end_date: "", description: "" });
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const { showToast } = useToast();
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch("/api/portfolio/work-experience", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      onAdd({ id: data.id, ...form, end_date: form.end_date || null });
-      setForm({ title: "", company: "", start_date: "", end_date: "", description: "" });
-      setShowForm(false);
-      showToast("Work experience added ✓", "success");
-    } catch {
-      showToast("Failed to save. Try again.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    setDeletingId(id);
-    try {
-      await fetch(`/api/portfolio/work-experience/${id}`, { method: "DELETE" });
-      onDelete(id);
-      showToast("Entry deleted", "info");
-    } catch {
-      showToast("Failed to delete.", "error");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  return (
-    <section>
-      <SectionHeader title="Work Experience" isOwner={isOwner} onAdd={() => setShowForm(true)} />
-
-      {items.length === 0 && (
-        <p className="text-[12px] text-[#424242]/30 italic py-3">
-          {isOwner ? "Add your first work experience." : "No work experience listed."}
-        </p>
-      )}
-
-      <div className="space-y-3">
-        {items.map((item) => (
-          <div key={item.id} className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5 group relative">
-            <div className="flex justify-between items-start gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-black text-[#424242] leading-tight">{item.title}</p>
-                <p className="text-[12px] text-[#424242]/55 mt-0.5">{item.company}</p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-[11px] text-[#424242]/40 text-right">
-                  {formatDateRange(item.start_date, item.end_date)}
-                </span>
-                {isOwner && (
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    disabled={deletingId === item.id}
-                    className="opacity-0 group-hover:opacity-100 text-[11px] text-red-400 hover:text-red-600 transition-all"
-                    aria-label="Delete"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-            {item.description && (
-              <p className="text-[12px] text-[#424242]/60 leading-relaxed mt-3">{item.description}</p>
-            )}
-            <PinnedActivities
-              entries={pinnedEntries.filter((e) => e.pinned_type === "work_experience" && e.pinned_id === item.id)}
-              onOpenLightbox={onOpenLightbox}
-            />
-          </div>
-        ))}
-      </div>
-
-      {showForm && (
-        <FormModal title="Add Work Experience" onClose={() => setShowForm(false)}>
-          <form onSubmit={submit} className="space-y-3">
-            <InputField label="Job Title" id="wx-title" value={form.title} onChange={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="Senior Software Engineer" required />
-            <InputField label="Company" id="wx-company" value={form.company} onChange={(v) => setForm((f) => ({ ...f, company: v }))} placeholder="TalentBank" required />
-            <div className="grid grid-cols-2 gap-3">
-              <InputField label="Start" id="wx-start" type="month" value={form.start_date} onChange={(v) => setForm((f) => ({ ...f, start_date: v }))} required />
-              <InputField label="End (leave blank if current)" id="wx-end" type="month" value={form.end_date} onChange={(v) => setForm((f) => ({ ...f, end_date: v }))} />
-            </div>
-            <TextAreaField label="Description" id="wx-desc" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="Key responsibilities and achievements…" />
-            <SubmitButton saving={saving} />
-          </form>
-        </FormModal>
-      )}
-    </section>
-  );
-}
-
-// ── Education ────────────────────────────────────────────────────────────────
-
-function EducationSection({
-  items,
-  isOwner,
-  onAdd,
-  onDelete,
-  pinnedEntries,
-  onOpenLightbox,
-}: {
-  items: Education[];
-  isOwner: boolean;
-  onAdd: (item: Education) => void;
-  onDelete: (id: number) => void;
-  pinnedEntries: PortfolioEntry[];
-  onOpenLightbox: (media: EntryMedia[], startIndex: number) => void;
-}) {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ institution: "", degree: "", start_date: "", end_date: "" });
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const { showToast } = useToast();
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch("/api/portfolio/education", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      onAdd({ id: data.id, ...form, end_date: form.end_date || null });
-      setForm({ institution: "", degree: "", start_date: "", end_date: "" });
-      setShowForm(false);
-      showToast("Education added ✓", "success");
-    } catch {
-      showToast("Failed to save. Try again.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    setDeletingId(id);
-    try {
-      await fetch(`/api/portfolio/education/${id}`, { method: "DELETE" });
-      onDelete(id);
-      showToast("Entry deleted", "info");
-    } catch {
-      showToast("Failed to delete.", "error");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  return (
-    <section>
-      <SectionHeader title="Education" isOwner={isOwner} onAdd={() => setShowForm(true)} />
-
-      {items.length === 0 && (
-        <p className="text-[12px] text-[#424242]/30 italic py-3">
-          {isOwner ? "Add your education history." : "No education listed."}
-        </p>
-      )}
-
-      <div className="space-y-3">
-        {items.map((item) => (
-          <div key={item.id} className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5 group">
-            <div className="flex gap-3 items-start">
-              {/* Institution icon placeholder */}
-              <div className="w-10 h-10 flex-shrink-0 rounded-lg bg-[#424242] flex items-center justify-center text-white text-[16px]">
-                🎓
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start gap-2">
-                  <p className="text-[13px] font-black text-[#424242] leading-tight">{item.institution}</p>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-[11px] text-[#424242]/40 text-right">
-                      {formatDateRange(item.start_date, item.end_date)}
-                    </span>
-                    {isOwner && (
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deletingId === item.id}
-                        className="opacity-0 group-hover:opacity-100 text-[11px] text-red-400 hover:text-red-600 transition-all"
-                        aria-label="Delete"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className="text-[12px] text-[#424242]/55 mt-0.5">{item.degree}</p>
-              </div>
-            </div>
-            <PinnedActivities
-              entries={pinnedEntries.filter((e) => e.pinned_type === "education" && e.pinned_id === item.id)}
-              onOpenLightbox={onOpenLightbox}
-            />
-          </div>
-        ))}
-      </div>
-
-      {showForm && (
-        <FormModal title="Add Education" onClose={() => setShowForm(false)}>
-          <form onSubmit={submit} className="space-y-3">
-            <InputField label="Institution" id="edu-institution" value={form.institution} onChange={(v) => setForm((f) => ({ ...f, institution: v }))} placeholder="University of Nottingham Malaysia" required />
-            <InputField label="Degree / Qualification" id="edu-degree" value={form.degree} onChange={(v) => setForm((f) => ({ ...f, degree: v }))} placeholder="BSc Computer Science with AI" required />
-            <div className="grid grid-cols-2 gap-3">
-              <InputField label="Start" id="edu-start" type="month" value={form.start_date} onChange={(v) => setForm((f) => ({ ...f, start_date: v }))} required />
-              <InputField label="End (leave blank if current)" id="edu-end" type="month" value={form.end_date} onChange={(v) => setForm((f) => ({ ...f, end_date: v }))} />
-            </div>
-            <SubmitButton saving={saving} />
-          </form>
-        </FormModal>
-      )}
-    </section>
-  );
-}
-
-// ── Honours & Awards ─────────────────────────────────────────────────────────
-
-function HonoursSection({
-  items,
-  isOwner,
-  onAdd,
-  onDelete,
-  pinnedEntries,
-  onOpenLightbox,
-}: {
-  items: HonourAward[];
-  isOwner: boolean;
-  onAdd: (item: HonourAward) => void;
-  onDelete: (id: number) => void;
-  pinnedEntries: PortfolioEntry[];
-  onOpenLightbox: (media: EntryMedia[], startIndex: number) => void;
-}) {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", issuer: "", award_date: "" });
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const { showToast } = useToast();
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch("/api/portfolio/honours", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      onAdd({ id: data.id, ...form });
-      setForm({ title: "", issuer: "", award_date: "" });
-      setShowForm(false);
-      showToast("Award added ✓", "success");
-    } catch {
-      showToast("Failed to save. Try again.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    setDeletingId(id);
-    try {
-      await fetch(`/api/portfolio/honours/${id}`, { method: "DELETE" });
-      onDelete(id);
-      showToast("Entry deleted", "info");
-    } catch {
-      showToast("Failed to delete.", "error");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  return (
-    <section>
-      <SectionHeader title="Honours & Awards" isOwner={isOwner} onAdd={() => setShowForm(true)} />
-
-      {items.length === 0 && (
-        <p className="text-[12px] text-[#424242]/30 italic py-3">
-          {isOwner ? "Add your honours and awards." : "No awards listed."}
-        </p>
-      )}
-
-      <div className="space-y-3">
-        {items.map((item) => (
-          <div key={item.id} className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5 group">
-            <div className="flex gap-3 items-start">
-              {/* Award icon placeholder */}
-              <div className="w-10 h-10 flex-shrink-0 rounded-lg bg-[#ffc000]/20 flex items-center justify-center text-[18px]">
-                🏆
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start gap-2">
-                  <p className="text-[13px] font-black text-[#424242] leading-tight">{item.title}</p>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-[11px] text-[#424242]/40">{formatDate(item.award_date)}</span>
-                    {isOwner && (
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deletingId === item.id}
-                        className="opacity-0 group-hover:opacity-100 text-[11px] text-red-400 hover:text-red-600 transition-all"
-                        aria-label="Delete"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {item.issuer && (
-                  <p className="text-[12px] text-[#424242]/55 mt-0.5">{item.issuer}</p>
-                )}
-              </div>
-            </div>
-            <PinnedActivities
-              entries={pinnedEntries.filter((e) => e.pinned_type === "honours_awards" && e.pinned_id === item.id)}
-              onOpenLightbox={onOpenLightbox}
-            />
-          </div>
-        ))}
-      </div>
-
-      {showForm && (
-        <FormModal title="Add Honour / Award" onClose={() => setShowForm(false)}>
-          <form onSubmit={submit} className="space-y-3">
-            <InputField label="Award / Title" id="ha-title" value={form.title} onChange={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="NottHack 2026 – 1st Runner Up" required />
-            <InputField label="Issuing Organisation" id="ha-issuer" value={form.issuer} onChange={(v) => setForm((f) => ({ ...f, issuer: v }))} placeholder="Computer Science Society" />
-            <InputField label="Date" id="ha-date" type="month" value={form.award_date} onChange={(v) => setForm((f) => ({ ...f, award_date: v }))} required />
-            <SubmitButton saving={saving} />
-          </form>
-        </FormModal>
-      )}
-    </section>
-  );
-}
+import {
+  PinnedActivities,
+  WorkExperienceSection,
+  EducationSection,
+  HonoursSection,
+} from "@/components/portfolio/ResumeSections";
 
 // ── Resume Preview Modal ─────────────────────────────────────────────────────
 
@@ -1025,6 +380,33 @@ export default function PublicPortfolioClient({
 
   const [showResumePreview, setShowResumePreview] = useState(false);
 
+  // Skills Modal State
+  const [showSkillsModal, setShowSkillsModal] = useState(false);
+  const [skillsForm, setSkillsForm] = useState<string[]>(profile.skills);
+  const [skillInput, setSkillInput] = useState("");
+  const [savingSkills, setSavingSkills] = useState(false);
+
+  const saveSkills = async () => {
+    setSavingSkills(true);
+    try {
+      const res = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...profile,
+          skills: skillsForm,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      showToast("Skills updated ✓", "success");
+      window.location.reload();
+    } catch {
+      showToast("Failed to save skills.", "error");
+    } finally {
+      setSavingSkills(false);
+    }
+  };
+
   // Lightbox
   const [lightbox, setLightbox] = useState<{ media: EntryMedia[]; startIndex: number } | null>(null);
 
@@ -1096,6 +478,14 @@ export default function PublicPortfolioClient({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 no-print">
+                  {isOwner && (
+                    <Link
+                      href="/profile/edit"
+                      className="flex-shrink-0 text-[12px] font-bold text-[#424242]/70 bg-white border border-[#424242]/15 px-4 py-2 rounded-full hover:border-[#424242]/30 hover:bg-[#f7f7f7] transition-all flex items-center gap-1.5 shadow-sm"
+                    >
+                      ✏️ Edit profile
+                    </Link>
+                  )}
                   <button
                     onClick={copyUrl}
                     className="flex-shrink-0 text-[12px] font-bold text-[#424242]/50 border border-[#424242]/15 px-4 py-2 rounded-full hover:border-[#424242]/30 transition-all flex items-center gap-1.5"
@@ -1180,16 +570,37 @@ export default function PublicPortfolioClient({
         {/* Skills map */}
         {allSkills.length > 0 && (
           <section className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5">
-            <h2 className="text-[11px] font-black uppercase tracking-widest text-[#424242]/40 mb-4 border-b border-[#424242]/8 pb-2">
-              Skills
-            </h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center justify-between mb-4 border-b border-[#424242]/8 pb-2">
+              <h2 className="text-[11px] font-black uppercase tracking-widest text-[#424242]/40">
+                Skills
+              </h2>
+              {isOwner && (
+                <button
+                  onClick={() => setShowSkillsModal(true)}
+                  className="text-[10px] font-bold text-[#b38600] hover:underline cursor-pointer"
+                >
+                  ✏️ Edit Profile Skills
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 mb-4">
               {allSkills.map((s) => (
                 <span key={s} className="bg-[#ffc000]/15 text-[#424242] text-[11px] font-bold px-3 py-1.5 rounded-full resume-skill-pill">
                   {s}
                 </span>
               ))}
             </div>
+            
+            {isOwner && (
+              <div className="pt-3 border-t border-[#424242]/8 flex justify-center">
+                <Link
+                  href="/portfolio/manage"
+                  className="text-[12px] font-bold text-[#424242]/70 hover:text-[#424242] bg-[#f7f7f7] hover:bg-[#ffc000]/20 px-6 py-2 rounded-full transition-all border border-[#424242]/10 flex items-center gap-2"
+                >
+                  ⚙️ Manage Portfolio Entries
+                </Link>
+              </div>
+            )}
           </section>
         )}
 
@@ -1198,6 +609,7 @@ export default function PublicPortfolioClient({
           items={workExpItems}
           isOwner={isOwner}
           onAdd={(item) => setWorkExpItems((prev) => [item, ...prev])}
+          onEdit={(updated) => setWorkExpItems((prev) => prev.map((i) => i.id === updated.id ? updated : i))}
           onDelete={(id) => setWorkExpItems((prev) => prev.filter((i) => i.id !== id))}
           pinnedEntries={pinnedEntries}
           onOpenLightbox={openLightbox}
@@ -1208,6 +620,7 @@ export default function PublicPortfolioClient({
           items={educationItems}
           isOwner={isOwner}
           onAdd={(item) => setEducationItems((prev) => [item, ...prev])}
+          onEdit={(updated) => setEducationItems((prev) => prev.map((i) => i.id === updated.id ? updated : i))}
           onDelete={(id) => setEducationItems((prev) => prev.filter((i) => i.id !== id))}
           pinnedEntries={pinnedEntries}
           onOpenLightbox={openLightbox}
@@ -1218,6 +631,7 @@ export default function PublicPortfolioClient({
           items={honoursItems}
           isOwner={isOwner}
           onAdd={(item) => setHonoursItems((prev) => [item, ...prev])}
+          onEdit={(updated) => setHonoursItems((prev) => prev.map((i) => i.id === updated.id ? updated : i))}
           onDelete={(id) => setHonoursItems((prev) => prev.filter((i) => i.id !== id))}
           pinnedEntries={pinnedEntries}
           onOpenLightbox={openLightbox}
@@ -1255,8 +669,8 @@ export default function PublicPortfolioClient({
                         <button
                           key={i}
                           onClick={() => openLightbox(entry.media, i)}
-                          className="flex-shrink-0 w-40 rounded-xl overflow-hidden border border-[#424242]/10 hover:border-[#ffc000]/50 transition-all shadow-sm group"
-                          aria-label={m.caption || `View image ${i + 1}`}
+                          className="flex-shrink-0 w-40 rounded-xl overflow-hidden border border-[#424242]/10 hover:border-[#ffc000]/50 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ffc000] group"
+                          aria-label={m.caption || `View image ${i + 1} fullscreen`}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -1326,6 +740,86 @@ export default function PublicPortfolioClient({
           startIndex={lightbox.startIndex}
           onClose={() => setLightbox(null)}
         />
+      )}
+
+      {showSkillsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-[#424242]/10 flex justify-between items-center bg-[#f7f7f7]">
+              <h2 className="text-[15px] font-black text-[#424242]">Manage Profile Skills</h2>
+              <button
+                onClick={() => setShowSkillsModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-[#424242]/50 hover:text-[#424242] transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              <div className="flex flex-wrap gap-2 mb-6">
+                {skillsForm.map(s => (
+                  <span key={s} className="bg-[#ffc000]/20 text-[#424242] text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                    {s}
+                    <button
+                      onClick={() => setSkillsForm(prev => prev.filter(x => x !== s))}
+                      className="text-[#424242]/40 hover:text-red-500 font-bold ml-1 leading-none transition-colors cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+                {skillsForm.length === 0 && (
+                  <span className="text-[12px] text-[#424242]/40 italic">No skills added yet.</span>
+                )}
+              </div>
+              
+              <form 
+                onSubmit={e => {
+                  e.preventDefault();
+                  const val = skillInput.trim();
+                  if (val && !skillsForm.includes(val)) {
+                    setSkillsForm(prev => [...prev, val]);
+                    setSkillInput("");
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  value={skillInput}
+                  onChange={e => setSkillInput(e.target.value)}
+                  placeholder="e.g. React, Python, Project Management"
+                  className="flex-1 border border-[#424242]/15 rounded-xl px-4 py-2.5 text-[13px] text-[#424242] outline-none focus:border-[#ffc000] transition-colors bg-white"
+                />
+                <button
+                  type="submit"
+                  disabled={!skillInput.trim()}
+                  className="bg-[#424242] text-white px-5 py-2.5 rounded-xl text-[13px] font-black disabled:opacity-50 transition-all hover:bg-[#333] cursor-pointer"
+                >
+                  Add
+                </button>
+              </form>
+            </div>
+
+            <div className="p-5 border-t border-[#424242]/10 bg-[#f7f7f7] flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setSkillsForm(profile.skills);
+                  setShowSkillsModal(false);
+                }}
+                className="px-5 py-2.5 text-[13px] font-bold text-[#424242] hover:bg-black/5 rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveSkills}
+                disabled={savingSkills}
+                className="bg-[#ffc000] text-[#424242] px-5 py-2.5 rounded-xl text-[13px] font-black disabled:opacity-50 hover:bg-[#e6ac00] transition-all cursor-pointer"
+              >
+                {savingSkills ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

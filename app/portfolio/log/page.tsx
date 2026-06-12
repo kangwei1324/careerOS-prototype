@@ -33,7 +33,8 @@ const SECTION_BADGES: Record<SavedSection, { label: string; icon: string; classN
 
 const ACTIVITY_CATEGORIES = ["Technical", "Leadership", "Communication", "Creative", "Other"];
 
-const today = new Date().toISOString().split("T")[0];
+const now = new Date();
+const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
 // ── Shared UI helpers ─────────────────────────────────────────────────────────
 

@@ -97,7 +97,16 @@ export async function GET(req: NextRequest) {
   });
 
   // 5. Send to Gemini for ranking and reasons
-  const aiMatches = await suggestCandidates(employer.description, candidatesForAi);
+  let aiMatches = await suggestCandidates(employer.description, candidatesForAi);
+
+  // Fallback if AI fails or returns empty array
+  if (aiMatches.length === 0 && candidatesForAi.length > 0) {
+    console.warn("[suggestions/route] AI returned 0 matches, using fallback suggestions.");
+    aiMatches = candidatesForAi.slice(0, 3).map((c) => ({
+      id: c.id,
+      reason: "Suggested based on general profile availability (AI match failed or found no strict fit)."
+    }));
+  }
 
   // 6. Save results to cache
   //    First clear old suggestions for this employer
