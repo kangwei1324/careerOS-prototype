@@ -82,7 +82,7 @@ function CandidateOnboarding({ onDone }: { onDone: () => void }) {
         headline: form.headline,
         location,
         field: form.field,
-        experience_years: Number(form.experience_years),
+        experience_years: form.experience_years,
         skills: form.skills,
         socials: {
           website: form.website,

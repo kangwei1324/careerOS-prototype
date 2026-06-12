@@ -36,6 +36,51 @@ function CandidateDashboard({ username }: { username: string }) {
     new Set(entries.flatMap((e) => e.skills))
   ).slice(0, 8);
 
+  const [primarySkills, setPrimarySkills] = useState<string[]>([]);
+  const [dismissedAi, setDismissedAi] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
+  const [savingSkills, setSavingSkills] = useState(false);
+
+  // Sync primarySkills from profile when it loads
+  useEffect(() => {
+    if (profile?.skills) setPrimarySkills(Array.isArray(profile.skills) ? profile.skills : []);
+  }, [profile]);
+
+  const aiOnlySkills: string[] = allSkills
+    .filter((s) => !primarySkills.includes(s) && !dismissedAi.includes(s));
+
+  const saveSkills = async (updated: string[]) => {
+    if (!profile) return;
+    setSavingSkills(true);
+    try {
+      await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...profile, skills: updated }),
+      });
+    } finally {
+      setSavingSkills(false);
+    }
+  };
+
+  const addSkill = () => {
+    const trimmed = skillInput.trim();
+    if (!trimmed || primarySkills.includes(trimmed)) { setSkillInput(""); return; }
+    const updated = [...primarySkills, trimmed];
+    setPrimarySkills(updated);
+    setSkillInput("");
+    saveSkills(updated);
+  };
+
+  const removeSkill = (s: string) => {
+    const updated = primarySkills.filter((x) => x !== s);
+    setPrimarySkills(updated);
+    saveSkills(updated);
+  };
+
+  const dismissAiSkill = (s: string) => setDismissedAi((prev) => [...prev, s]);
+
+
   const completeness = profile
     ? [profile.name, profile.headline, profile.location, profile.field, (profile.skills || []).length > 0]
       .filter(Boolean).length * 20
@@ -54,6 +99,7 @@ function CandidateDashboard({ username }: { username: string }) {
     );
   }
 
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
       {/* Welcome banner */}
@@ -61,6 +107,15 @@ function CandidateDashboard({ username }: { username: string }) {
         <div>
           <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Your career, building.</p>
           <h1 className="text-white text-[22px] font-black">Hi, {profile?.name || username} 👋</h1>
+          <p className="text-[13px] font-semibold text-[#c4c4c4]/60 mt-1 leading-snug">{profile?.headline}</p>
+          <div className="flex flex-wrap gap-3 mt-3">
+            <span className="text-[11px] text-[#f8f8f8]/50 flex items-center gap-1">
+              <span aria-hidden="true">📍</span> {profile.location}
+            </span>
+            <span className="text-[11px] text-[#c4c4c4]/50 flex items-center gap-1">
+              <span aria-hidden="true">💼</span> {profile.field}
+            </span>
+          </div>
           <p className="text-white/40 text-[13px] mt-1">{entries.length} portfolio {entries.length === 1 ? "entry" : "entries"} logged</p>
         </div>
         <Link
@@ -130,16 +185,70 @@ function CandidateDashboard({ username }: { username: string }) {
       )}
 
       {/* Skills */}
-      {allSkills.length > 0 && (
+      {(primarySkills.length > 0 || aiOnlySkills.length > 0) && (
         <div className="bg-white rounded-xl p-5 shadow-[var(--card-shadow)]">
-          <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50 mb-4">Top skills</h2>
-          <div className="flex flex-wrap gap-2">
-            {allSkills.map((s) => (
-              <span key={s} className="bg-[#ffc000]/15 text-[#424242] text-[11px] font-bold px-3 py-1.5 rounded-full">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50">Skills</h2>
+            {savingSkills && <span className="text-[10px] text-[#424242]/30 animate-pulse">Saving…</span>}
+          </div>
+
+          {/* Primary — profile-entered skills */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {primarySkills.map((s) => (
+              <span key={s} className="flex items-center gap-1 bg-[#ffc000] text-[#424242] text-[11px] font-black px-3 py-1.5 rounded-full">
                 {s}
+                <button
+                  onClick={() => removeSkill(s)}
+                  aria-label={`Remove ${s}`}
+                  className="ml-0.5 text-[#424242]/50 hover:text-[#424242] cursor-pointer text-[10px] leading-none transition-colors"
+                >
+                  ✕
+                </button>
               </span>
             ))}
+
+            {/* Inline add field */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); addSkill(); }}
+              className="flex items-center gap-1"
+            >
+              <input
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                placeholder="Add skill…"
+                className="text-[11px] border border-[#424242]/20 rounded-full px-3 py-1.5 w-28 outline-none focus:border-[#ffc000] transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={!skillInput.trim()}
+                aria-label="Add skill"
+                className="w-6 h-6 rounded-full bg-[#ffc000] text-[#424242] font-black text-[14px] leading-none flex items-center justify-center hover:bg-[#e6ac00] disabled:opacity-30 cursor-pointer transition-all"
+              >
+                +
+              </button>
+            </form>
           </div>
+
+          {/* Secondary — AI-detected skills not already listed */}
+          {aiOnlySkills.length > 0 && (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#424242]/30 mb-2">Also detected from your logs</p>
+              <div className="flex flex-wrap gap-2">
+                {aiOnlySkills.map((s) => (
+                  <span key={s} className="flex items-center gap-1 bg-[#424242]/6 text-[#424242]/50 text-[11px] font-bold px-3 py-1.5 rounded-full border border-[#424242]/8">
+                    {s}
+                    <button
+                      onClick={() => dismissAiSkill(s)}
+                      aria-label={`Dismiss ${s}`}
+                      className="ml-0.5 text-[#424242]/30 hover:text-[#424242]/60 cursor-pointer text-[10px] leading-none transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 

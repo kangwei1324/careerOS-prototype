@@ -4,22 +4,36 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 const MODEL = "gemini-2.5-flash-lite";
 
-// ── Helper ───────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────
 async function generate(prompt: string): Promise<string> {
   const response = await ai.models.generateContent({
     model: MODEL,
     contents: prompt,
   });
 
-  // @google/genai v2: response.text is a getter, but can be undefined
-  // if the model response is blocked or structured differently.
-  // Fall back through the candidates array to be safe.
-  const text =
-    response.text ??
-    (response as any).candidates?.[0]?.content?.parts?.[0]?.text ??
-    "";
+  // gemini-2.5-flash-lite returns thinking tokens as parts with `thought: true`.
+  // The SDK's response.text getter SKIPS thought parts and returns undefined
+  // if the only text came from thought parts, OR if parts[0] is a thought part
+  // and no non-thought text follows.
+  //
+  // We must manually scan candidates[0].content.parts and find the FIRST
+  // part that has `text` AND does NOT have `thought: true`.
+  const parts: any[] =
+    (response as any).candidates?.[0]?.content?.parts ?? [];
 
-  console.log("[gemini] raw response (first 300 chars):", text.slice(0, 300));
+  const textPart = parts.find(
+    (p: any) => typeof p.text === "string" && p.thought !== true
+  );
+
+  const text = textPart?.text ?? response.text ?? "";
+
+  if (!text) {
+    // Log the full structure so we can debug future failures
+    console.error("[gemini] empty text. Full candidate parts:", JSON.stringify(parts, null, 2).slice(0, 500));
+  } else {
+    console.log("[gemini] raw response (first 300 chars):", text.slice(0, 300));
+  }
+
   return text.trim();
 }
 
