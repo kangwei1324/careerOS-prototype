@@ -1,11 +1,25 @@
 // ── CareerOS Shared Types ─────────────────────────────────────────
 
+export interface EntryMedia {
+  url: string;
+  caption: string;
+}
+
+export interface EntryLink {
+  url: string;
+  label: string;
+}
+
 export interface PortfolioEntry {
   id: number;
   polished_entry: string;
   category: string;
   entry_date: string;
   skills: string[];
+  media: EntryMedia[];
+  links: EntryLink[];
+  pinned_type?: 'work_experience' | 'education' | 'honours_awards';
+  pinned_id?: number;
 }
 
 export interface WorkExperience {

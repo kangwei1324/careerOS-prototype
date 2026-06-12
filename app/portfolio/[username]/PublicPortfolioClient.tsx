@@ -5,7 +5,7 @@ import { useAuthStore } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
-import { CATEGORY_COLOURS, type PortfolioEntry, type WorkExperience, type Education, type HonourAward } from "@/lib/types";
+import { CATEGORY_COLOURS, type EntryMedia, type EntryLink, type PortfolioEntry, type WorkExperience, type Education, type HonourAward } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
 interface Profile {
@@ -21,6 +21,153 @@ interface Profile {
     linkedin?: string;
     github?: string;
   };
+}
+
+// ── Lightbox ─────────────────────────────────────────────────────────────────
+
+function Lightbox({
+  media,
+  startIndex,
+  onClose,
+}: {
+  media: EntryMedia[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(startIndex);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, media.length - 1));
+      if (e.key === "ArrowLeft")  setIdx((i) => Math.max(i - 1, 0));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [media.length, onClose]);
+
+  const current = media[idx];
+  return (
+    <div
+      className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-4xl w-full flex flex-col items-center gap-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={current.url}
+          alt={current.caption || "proof image"}
+          className="max-h-[80vh] max-w-full rounded-xl object-contain shadow-2xl"
+        />
+        {current.caption && (
+          <p className="text-white/70 text-[13px] text-center">{current.caption}</p>
+        )}
+        {media.length > 1 && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIdx((i) => Math.max(i - 1, 0))}
+              disabled={idx === 0}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white disabled:opacity-30 transition-all flex items-center justify-center"
+              aria-label="Previous"
+            >
+              ‹
+            </button>
+            <span className="text-white/50 text-[12px]">{idx + 1} / {media.length}</span>
+            <button
+              onClick={() => setIdx((i) => Math.min(i + 1, media.length - 1))}
+              disabled={idx === media.length - 1}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white disabled:opacity-30 transition-all flex items-center justify-center"
+              aria-label="Next"
+            >
+              ›
+            </button>
+          </div>
+        )}
+        <button
+          onClick={onClose}
+          className="absolute top-0 right-0 w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 text-white text-[18px] flex items-center justify-center transition-all"
+          aria-label="Close lightbox"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── PinnedActivities ─────────────────────────────────────────────────────────────
+
+function PinnedActivities({
+  entries,
+  onOpenLightbox,
+}: {
+  entries: PortfolioEntry[];
+  onOpenLightbox: (media: EntryMedia[], startIndex: number) => void;
+}) {
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="mt-4 pt-4 border-t border-[#424242]/8 space-y-3">
+      <p className="text-[10px] font-black uppercase tracking-widest text-[#424242]/40">
+        Activities ({entries.length})
+      </p>
+      {entries.map((entry) => (
+        <div key={entry.id} className="bg-[#f7f7f7] rounded-xl p-4 space-y-2">
+          {/* Category + date */}
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${CATEGORY_COLOURS[entry.category] ?? CATEGORY_COLOURS.Other}`}>
+              {entry.category}
+            </span>
+            <span className="text-[10px] text-[#424242]/40">{formatDate(entry.entry_date)}</span>
+          </div>
+
+          {/* Narrative */}
+          <p className="text-[12px] text-[#424242]/75 leading-relaxed">{entry.polished_entry}</p>
+
+          {/* Image strip */}
+          {entry.media && entry.media.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {entry.media.map((m, i) => (
+                <button
+                  key={i}
+                  onClick={() => onOpenLightbox(entry.media, i)}
+                  className="flex-shrink-0 w-28 rounded-lg overflow-hidden border border-[#424242]/10 hover:border-[#ffc000]/50 transition-all group"
+                  aria-label={m.caption || `View image ${i + 1}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={m.url} alt={m.caption || "proof"} className="w-28 h-20 object-cover group-hover:scale-105 transition-transform duration-200" />
+                  {m.caption && <p className="text-[9px] text-[#424242]/40 px-1.5 py-1 truncate text-left">{m.caption}</p>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Proof links */}
+          {entry.links && entry.links.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {entry.links.map((l, i) => (
+                <a key={i} href={l.url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] font-bold text-[#424242]/55 bg-white hover:bg-[#ffc000]/20 hover:text-[#424242] px-2.5 py-1 rounded-full transition-all border border-[#424242]/10">
+                  🔗 {l.label}
+                </a>
+              ))}
+            </div>
+          )}
+
+          {/* Skills */}
+          {entry.skills.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {entry.skills.map((s) => (
+                <span key={s} className="bg-[#424242]/6 text-[#424242]/45 text-[9px] font-bold px-2 py-0.5 rounded-full">{s}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -174,11 +321,15 @@ function WorkExperienceSection({
   isOwner,
   onAdd,
   onDelete,
+  pinnedEntries,
+  onOpenLightbox,
 }: {
   items: WorkExperience[];
   isOwner: boolean;
   onAdd: (item: WorkExperience) => void;
   onDelete: (id: number) => void;
+  pinnedEntries: PortfolioEntry[];
+  onOpenLightbox: (media: EntryMedia[], startIndex: number) => void;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", company: "", start_date: "", end_date: "", description: "" });
@@ -258,6 +409,10 @@ function WorkExperienceSection({
             {item.description && (
               <p className="text-[12px] text-[#424242]/60 leading-relaxed mt-3">{item.description}</p>
             )}
+            <PinnedActivities
+              entries={pinnedEntries.filter((e) => e.pinned_type === "work_experience" && e.pinned_id === item.id)}
+              onOpenLightbox={onOpenLightbox}
+            />
           </div>
         ))}
       </div>
@@ -287,11 +442,15 @@ function EducationSection({
   isOwner,
   onAdd,
   onDelete,
+  pinnedEntries,
+  onOpenLightbox,
 }: {
   items: Education[];
   isOwner: boolean;
   onAdd: (item: Education) => void;
   onDelete: (id: number) => void;
+  pinnedEntries: PortfolioEntry[];
+  onOpenLightbox: (media: EntryMedia[], startIndex: number) => void;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ institution: "", degree: "", start_date: "", end_date: "" });
@@ -374,6 +533,10 @@ function EducationSection({
                 <p className="text-[12px] text-[#424242]/55 mt-0.5">{item.degree}</p>
               </div>
             </div>
+            <PinnedActivities
+              entries={pinnedEntries.filter((e) => e.pinned_type === "education" && e.pinned_id === item.id)}
+              onOpenLightbox={onOpenLightbox}
+            />
           </div>
         ))}
       </div>
@@ -402,11 +565,15 @@ function HonoursSection({
   isOwner,
   onAdd,
   onDelete,
+  pinnedEntries,
+  onOpenLightbox,
 }: {
   items: HonourAward[];
   isOwner: boolean;
   onAdd: (item: HonourAward) => void;
   onDelete: (id: number) => void;
+  pinnedEntries: PortfolioEntry[];
+  onOpenLightbox: (media: EntryMedia[], startIndex: number) => void;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", issuer: "", award_date: "" });
@@ -489,6 +656,10 @@ function HonoursSection({
                 )}
               </div>
             </div>
+            <PinnedActivities
+              entries={pinnedEntries.filter((e) => e.pinned_type === "honours_awards" && e.pinned_id === item.id)}
+              onOpenLightbox={onOpenLightbox}
+            />
           </div>
         ))}
       </div>
@@ -854,6 +1025,16 @@ export default function PublicPortfolioClient({
 
   const [showResumePreview, setShowResumePreview] = useState(false);
 
+  // Lightbox
+  const [lightbox, setLightbox] = useState<{ media: EntryMedia[]; startIndex: number } | null>(null);
+
+  const openLightbox = (media: EntryMedia[], startIndex: number) =>
+    setLightbox({ media, startIndex });
+
+  // Split entries into pinned (belong under a section) vs. standalone
+  const pinnedEntries = entries.filter((e) => e.pinned_type && e.pinned_id);
+  const unpinnedEntries = entries.filter((e) => !e.pinned_type || !e.pinned_id);
+
   const isOwner = user?.username === username;
 
   const copyUrl = () => {
@@ -1018,6 +1199,8 @@ export default function PublicPortfolioClient({
           isOwner={isOwner}
           onAdd={(item) => setWorkExpItems((prev) => [item, ...prev])}
           onDelete={(id) => setWorkExpItems((prev) => prev.filter((i) => i.id !== id))}
+          pinnedEntries={pinnedEntries}
+          onOpenLightbox={openLightbox}
         />
 
         {/* Education */}
@@ -1026,6 +1209,8 @@ export default function PublicPortfolioClient({
           isOwner={isOwner}
           onAdd={(item) => setEducationItems((prev) => [item, ...prev])}
           onDelete={(id) => setEducationItems((prev) => prev.filter((i) => i.id !== id))}
+          pinnedEntries={pinnedEntries}
+          onOpenLightbox={openLightbox}
         />
 
         {/* Honours & Awards */}
@@ -1034,29 +1219,77 @@ export default function PublicPortfolioClient({
           isOwner={isOwner}
           onAdd={(item) => setHonoursItems((prev) => [item, ...prev])}
           onDelete={(id) => setHonoursItems((prev) => prev.filter((i) => i.id !== id))}
+          pinnedEntries={pinnedEntries}
+          onOpenLightbox={openLightbox}
         />
 
-        {/* Activity Log — catches everything that doesn't fit the structured sections */}
-        {entries.length > 0 && (
+        {/* Activity Log — unpinned entries only */}
+        {unpinnedEntries.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4 border-b border-[#424242]/10 pb-2">
               <h2 className="text-[15px] font-black text-[#424242]">Activity Log</h2>
-              <span className="text-[12px] text-[#424242]/40">{entries.length} {entries.length === 1 ? "entry" : "entries"}</span>
+              <span className="text-[12px] text-[#424242]/40">{unpinnedEntries.length} {unpinnedEntries.length === 1 ? "entry" : "entries"}</span>
             </div>
 
             <div className="space-y-4">
-              {entries.map((entry) => (
+              {unpinnedEntries.map((entry) => (
                 <div
                   key={entry.id}
                   className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5 resume-entry-card"
                 >
+                  {/* Category + Date */}
                   <div className="flex items-center gap-2 mb-3">
                     <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full resume-category-badge ${CATEGORY_COLOURS[entry.category] ?? CATEGORY_COLOURS.Other}`}>
                       {entry.category}
                     </span>
                     <span className="text-[10px] text-[#424242]/40">{formatDate(entry.entry_date)}</span>
                   </div>
+
+                  {/* Narrative */}
                   <p className="text-[13px] text-[#424242]/75 leading-relaxed">{entry.polished_entry}</p>
+
+                  {/* Image strip */}
+                  {entry.media && entry.media.length > 0 && (
+                    <div className="flex gap-2.5 mt-4 overflow-x-auto pb-1 -mx-1 px-1">
+                      {entry.media.map((m, i) => (
+                        <button
+                          key={i}
+                          onClick={() => openLightbox(entry.media, i)}
+                          className="flex-shrink-0 w-40 rounded-xl overflow-hidden border border-[#424242]/10 hover:border-[#ffc000]/50 transition-all shadow-sm group"
+                          aria-label={m.caption || `View image ${i + 1}`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={m.url}
+                            alt={m.caption || "proof image"}
+                            className="w-40 h-28 object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                          {m.caption && (
+                            <p className="text-[10px] text-[#424242]/50 px-2.5 py-1.5 truncate text-left">{m.caption}</p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Proof links */}
+                  {entry.links && entry.links.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {entry.links.map((l, i) => (
+                        <a
+                          key={i}
+                          href={l.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#424242]/60 bg-[#424242]/6 hover:bg-[#ffc000]/20 hover:text-[#424242] px-3 py-1.5 rounded-full transition-all border border-[#424242]/10"
+                        >
+                          🔗 {l.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Skills */}
                   {entry.skills.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-3">
                       {entry.skills.map((s) => (
@@ -1078,12 +1311,20 @@ export default function PublicPortfolioClient({
       {showResumePreview && (
         <ResumePreviewModal
           profile={profile}
-          entries={entries}
+          entries={unpinnedEntries}
           allSkills={allSkills}
           workExperience={workExpItems}
           education={educationItems}
           honours={honoursItems}
           onClose={() => setShowResumePreview(false)}
+        />
+      )}
+
+      {lightbox && (
+        <Lightbox
+          media={lightbox.media}
+          startIndex={lightbox.startIndex}
+          onClose={() => setLightbox(null)}
         />
       )}
     </div>

@@ -6,6 +6,8 @@ import { useAuthStore, useHasHydrated } from "@/stores/authStore";
 import AppNavbar from "@/components/layout/AppNavbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/Toast";
+import { MediaEditor, LinksEditor, PinSelector, type PinOption, type PinType } from "@/components/portfolio/EntryEditors";
+import type { EntryMedia, EntryLink, WorkExperience, Education, HonourAward } from "@/lib/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -169,17 +171,48 @@ export default function LogActivityPage() {
   const [editSkills, setEditSkills] = useState<string[]>([]);
   const [editStructured, setEditStructured] = useState<Record<string, string>>({});
 
+  // Rich proof attachments (only saved for activity_log section)
+  const [editMedia, setEditMedia] = useState<EntryMedia[]>([]);
+  const [editLinks, setEditLinks] = useState<EntryLink[]>([]);
+
+  // Pin state
+  const [pinnedType, setPinnedType] = useState<PinType | null>(null);
+  const [pinnedId, setPinnedId] = useState<number | null>(null);
+
+  // Parent entries for pin selector
+  const [workItems, setWorkItems]     = useState<WorkExperience[]>([]);
+  const [eduItems, setEduItems]       = useState<Education[]>([]);
+  const [honoursItems, setHonoursItems] = useState<HonourAward[]>([]);
+  const [parentLoaded, setParentLoaded] = useState(false);
+
   const hydrated = useHasHydrated();
 
   useEffect(() => {
-    if (hydrated && !user) router.push("/auth/signin");
-    else if (hydrated && user && user.role !== "candidate") router.push("/dashboard");
+    if (!hydrated) return;
+    if (!user) { router.push("/auth/signin"); return; }
+    if (user.role !== "candidate") { router.push("/dashboard"); return; }
+
+    // Fetch parent entries for the pin selector
+    Promise.all([
+      fetch("/api/portfolio/work-experience").then((r) => r.json()),
+      fetch("/api/portfolio/education").then((r) => r.json()),
+      fetch("/api/portfolio/honours").then((r) => r.json()),
+    ]).then(([work, edu, honours]) => {
+      setWorkItems(Array.isArray(work)    ? work    : []);
+      setEduItems(Array.isArray(edu)      ? edu     : []);
+      setHonoursItems(Array.isArray(honours) ? honours : []);
+      setParentLoaded(true);
+    }).catch(() => setParentLoaded(true));
   }, [hydrated, user, router]);
 
   const generate = async () => {
     if (!rawLog.trim()) return;
     setGenerating(true);
     setShowPreview(false);
+    setEditMedia([]);
+    setEditLinks([]);
+    setPinnedType(null);
+    setPinnedId(null);
     try {
       const res = await fetch("/api/ai/generate-entry", {
         method: "POST",
@@ -211,10 +244,10 @@ export default function LogActivityPage() {
         case "work_experience":
           endpoint = "/api/portfolio/work-experience";
           body = {
-            title: editStructured.title?.trim() || "Untitled Role",
-            company: editStructured.company?.trim() || "Unknown",
-            start_date: editStructured.start_date || monthDate,
-            end_date: editStructured.end_date || null,
+            title:       editStructured.title?.trim()      || "Untitled Role",
+            company:     editStructured.company?.trim()    || "Unknown",
+            start_date:  editStructured.start_date         || monthDate,
+            end_date:    editStructured.end_date            || null,
             description: editEntry,
           };
           break;
@@ -222,27 +255,31 @@ export default function LogActivityPage() {
           endpoint = "/api/portfolio/education";
           body = {
             institution: editStructured.institution?.trim() || "Unknown",
-            degree: editStructured.degree?.trim() || "Unknown",
-            start_date: editStructured.start_date || monthDate,
-            end_date: editStructured.end_date || null,
+            degree:      editStructured.degree?.trim()      || "Unknown",
+            start_date:  editStructured.start_date          || monthDate,
+            end_date:    editStructured.end_date             || null,
           };
           break;
         case "honours_awards":
           endpoint = "/api/portfolio/honours";
           body = {
-            title: editStructured.title?.trim() || "Untitled",
-            issuer: editStructured.issuer?.trim() || "",
-            award_date: editStructured.award_date || monthDate,
+            title:      editStructured.title?.trim()  || "Untitled",
+            issuer:     editStructured.issuer?.trim() || "",
+            award_date: editStructured.award_date     || monthDate,
           };
           break;
         default:
           endpoint = "/api/portfolio/entries";
           body = {
-            raw_log: rawLog,
+            raw_log:        rawLog,
             polished_entry: editEntry,
-            category: editStructured.category || "Other",
-            entry_date: date,
-            skills: editSkills,
+            category:       editStructured.category || "Other",
+            entry_date:     date,
+            skills:         editSkills,
+            media:          editMedia,
+            links:          editLinks,
+            pinned_type:    pinnedType,
+            pinned_id:      pinnedId,
           };
           break;
       }
@@ -265,6 +302,28 @@ export default function LogActivityPage() {
   if (!hydrated || !user) return null;
 
   const badge = SECTION_BADGES[editSection];
+
+  // Build pin options from loaded parent data
+  const pinOptions: PinOption[] = [
+    ...workItems.map((w) => ({
+      type: "work_experience" as PinType,
+      id: w.id,
+      label: `${w.title} @ ${w.company}`,
+      icon: "💼",
+    })),
+    ...eduItems.map((e) => ({
+      type: "education" as PinType,
+      id: e.id,
+      label: `${e.degree} – ${e.institution}`,
+      icon: "🎓",
+    })),
+    ...honoursItems.map((h) => ({
+      type: "honours_awards" as PinType,
+      id: h.id,
+      label: h.title,
+      icon: "🏆",
+    })),
+  ];
 
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
@@ -358,8 +417,14 @@ export default function LogActivityPage() {
                   value={editSection}
                   onChange={(e) => {
                     setEditSection(e.target.value as SavedSection);
-                    // Reset structured so new fields start empty (AI data may not match new section)
                     setEditStructured({});
+                    // Reset proof attachments + pin when switching to non-activity section
+                    if (e.target.value !== "activity_log") {
+                      setEditMedia([]);
+                      setEditLinks([]);
+                      setPinnedType(null);
+                      setPinnedId(null);
+                    }
                   }}
                   className="border border-[#424242]/15 rounded-lg px-2 py-1.5 text-[12px] text-[#424242] outline-none focus:border-[#ffc000] bg-white"
                 >
@@ -409,6 +474,23 @@ export default function LogActivityPage() {
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ── Proof attachments + pin (activity_log only) ── */}
+            {editSection === "activity_log" && (
+              <div className="space-y-5 border-t border-[#424242]/8 pt-5">
+                <MediaEditor media={editMedia} onChange={setEditMedia} />
+                <LinksEditor links={editLinks} onChange={setEditLinks} />
+
+                {parentLoaded && pinOptions.length > 0 && (
+                  <PinSelector
+                    options={pinOptions}
+                    pinnedType={pinnedType}
+                    pinnedId={pinnedId}
+                    onChange={(t, id) => { setPinnedType(t); setPinnedId(id); }}
+                  />
+                )}
               </div>
             )}
 

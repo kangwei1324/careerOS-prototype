@@ -13,7 +13,6 @@ export async function DELETE(
   const { id } = await params;
   const db = getDb();
 
-  // Only delete if entry belongs to the current user
   const result = db
     .prepare("DELETE FROM portfolio_entries WHERE id = ? AND user_id = ?")
     .run(Number(id), session.userId);
@@ -34,16 +33,29 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { polished_entry } = await req.json();
+  const { polished_entry, media, links, pinned_type, pinned_id } = await req.json();
   const db = getDb();
 
   const result = db
     .prepare(
       `UPDATE portfolio_entries
-       SET polished_entry = ?, updated_at = datetime('now')
+       SET polished_entry = ?,
+           media_json     = ?,
+           links_json     = ?,
+           pinned_type    = ?,
+           pinned_id      = ?,
+           updated_at     = datetime('now')
        WHERE id = ? AND user_id = ?`
     )
-    .run(polished_entry, Number(id), session.userId);
+    .run(
+      polished_entry,
+      JSON.stringify(media ?? []),
+      JSON.stringify(links ?? []),
+      pinned_type ?? null,
+      pinned_id   ?? null,
+      Number(id),
+      session.userId
+    );
 
   if (result.changes === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

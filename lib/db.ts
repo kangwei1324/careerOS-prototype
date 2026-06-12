@@ -136,4 +136,32 @@ function initSchema(db: Database.Database) {
     // Column already exists — ignore
   }
 
+  // ── Safe migration: add media_json (image attachments) to portfolio_entries ──
+  try {
+    db.exec(`ALTER TABLE portfolio_entries ADD COLUMN media_json TEXT NOT NULL DEFAULT '[]'`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // ── Safe migration: add links_json (proof links) to portfolio_entries ──
+  try {
+    db.exec(`ALTER TABLE portfolio_entries ADD COLUMN links_json TEXT NOT NULL DEFAULT '[]'`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // ── Safe migration: add pinned_type (work_experience | education | honours_awards) ──
+  try {
+    db.exec(`ALTER TABLE portfolio_entries ADD COLUMN pinned_type TEXT`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // ── Safe migration: add pinned_id (FK to the parent section row) ──
+  try {
+    db.exec(`ALTER TABLE portfolio_entries ADD COLUMN pinned_id INTEGER`);
+  } catch {
+    // Column already exists — ignore
+  }
+
 }

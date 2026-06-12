@@ -1,15 +1,8 @@
 import { getDb } from "@/lib/db";
 import { notFound } from "next/navigation";
 import PublicPortfolioClient from "./PublicPortfolioClient";
-import type { WorkExperience, Education, HonourAward } from "@/lib/types";
+import type { PortfolioEntry, WorkExperience, Education, HonourAward } from "@/lib/types";
 
-interface Entry {
-  id: number;
-  polished_entry: string;
-  category: string;
-  entry_date: string;
-  skills: string[];
-}
 
 interface Profile {
   name: string;
@@ -47,7 +40,7 @@ export default async function PublicPortfolioPage({
 
   const entries = db
     .prepare
-      (`SELECT id, polished_entry, category, entry_date, skills_json
+      (`SELECT id, polished_entry, category, entry_date, skills_json, media_json, links_json, pinned_type, pinned_id
        FROM portfolio_entries
        WHERE user_id = ?
        ORDER BY entry_date DESC, created_at DESC`)
@@ -88,9 +81,13 @@ export default async function PublicPortfolioPage({
     userId: user.id,
   };
 
-  const formattedEntries: Entry[] = entries.map((e) => ({
+  const formattedEntries: PortfolioEntry[] = entries.map((e) => ({
     ...e,
-    skills: JSON.parse(e.skills_json ?? "[]"),
+    skills:      JSON.parse(e.skills_json ?? "[]"),
+    media:       JSON.parse(e.media_json  ?? "[]"),
+    links:       JSON.parse(e.links_json  ?? "[]"),
+    pinned_type: e.pinned_type ?? undefined,
+    pinned_id:   e.pinned_id   ?? undefined,
   }));
 
   // Union of manually-added profile skills + AI-extracted entry skills
