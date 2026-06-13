@@ -171,7 +171,7 @@ export default function ManagePortfolioPage() {
                 href={`/portfolio/${user.username}`}
                 className="text-[12px] font-bold text-[#424242]/50 border border-[#424242]/15 px-4 py-2 rounded-full hover:border-[#424242]/30 transition-all"
               >
-                View public →
+                View profile →
               </Link>
             )}
             <Link

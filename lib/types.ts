@@ -50,6 +50,14 @@ export interface Signal {
   company_name: string;
   created_at: string;
   username: string;
+  has_interest?: boolean;
+  has_offer?: boolean;
+  offer_type?: string;
+  field?: string;
+  role_name?: string;
+  min_salary?: number;
+  max_salary?: number;
+  status?: string;
 }
 
 export interface CandidateProfile {

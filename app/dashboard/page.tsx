@@ -15,6 +15,7 @@ function CandidateDashboard({ username }: { username: string }) {
   const [signals, setSignals] = useState<{ count: number; employers: Signal[] }>({ count: 0, employers: [] });
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [viewingOffer, setViewingOffer] = useState<Signal | null>(null);
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
@@ -103,8 +104,9 @@ function CandidateDashboard({ username }: { username: string }) {
 
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
-      {/* Welcome banner */}
+    <>
+      <div className="max-w-3xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
+        {/* Welcome banner */}
       <div className="bg-[#424242] rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-1">Your career, building.</p>
@@ -174,15 +176,33 @@ function CandidateDashboard({ username }: { username: string }) {
           <h2 className="text-[12px] font-black uppercase tracking-widest text-[#424242]/50 mb-4">Employer signals</h2>
           <div className="space-y-3">
             {signals.employers.map((s, i) => (
-              <Link key={i} href={`/company/${s.username}`} className="flex items-center gap-3 group hover:bg-[#f7f7f7] p-2 -m-2 rounded-lg transition-colors">
-                <div className="w-8 h-8 bg-[#424242] rounded-lg flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 group-hover:bg-[#ffc000] group-hover:text-[#424242] transition-colors" aria-hidden="true">
-                  {s.company_name.charAt(0)}
+              <div key={i} className="flex items-center justify-between group hover:bg-[#f7f7f7] p-2 -m-2 rounded-lg transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-[#424242] rounded-lg flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 group-hover:bg-[#ffc000] group-hover:text-[#424242] transition-colors" aria-hidden="true">
+                    {s.company_name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-bold text-[#424242]">{s.company_name}</p>
+                    <p className="text-[11px] text-[#424242]/50">
+                      {s.has_offer ? (
+                        <>Offering an <span className="text-[#ffc000]">application</span></>
+                      ) : (
+                        "Expressed interest"
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[13px] font-bold text-[#424242] group-hover:underline">{s.company_name}</p>
-                  <p className="text-[11px] text-[#424242]/50">Expressed interest</p>
+                <div className="flex gap-2">
+                  <Link href={`/company/${s.username}`} className="text-[11px] font-bold text-[#424242]/60 hover:text-[#424242] bg-[#424242]/5 hover:bg-[#424242]/10 px-3 py-1.5 rounded-full transition-all">
+                    View company
+                  </Link>
+                  {Boolean(s.has_offer) && (
+                    <button onClick={() => setViewingOffer(s)} className="text-[11px] font-bold text-[#424242] bg-[#ffc000] hover:bg-[#e6ac00] px-3 py-1.5 rounded-full transition-all">
+                      View Application
+                    </button>
+                  )}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>
@@ -300,7 +320,7 @@ function CandidateDashboard({ username }: { username: string }) {
         <Link href={`/portfolio/${username}`} className="bg-white rounded-xl p-4 shadow-[var(--card-shadow)] flex items-center gap-3 hover:shadow-[var(--card-shadow-hover)] transition-shadow group">
           <span className="text-2xl" aria-hidden="true">🔗</span>
           <div>
-            <p className="text-[13px] font-black text-[#424242]">View public portfolio</p>
+            <p className="text-[13px] font-black text-[#424242]">View profile</p>
             <p className="text-[11px] text-[#424242]/50">portfolio/{username}</p>
           </div>
         </Link>
@@ -312,7 +332,104 @@ function CandidateDashboard({ username }: { username: string }) {
           </div>
         </Link>
       </div>
-    </div>
+      </div>
+
+      {viewingOffer && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setViewingOffer(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh] animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setViewingOffer(null)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-[#424242]/40 hover:bg-red-500 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="p-5 border-b border-[#424242]/10">
+              <h2 className="text-[18px] font-black text-[#424242]">Application Offer</h2>
+              <p className="text-[13px] text-[#424242]/60 mt-1">
+                From <span className="font-bold">{viewingOffer.company_name}</span>
+              </p>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/60 mb-2">Type of Offer</label>
+                  <div className="flex gap-3">
+                    {viewingOffer.offer_type === "Interview" && (
+                      <button
+                        type="button"
+                        disabled
+                        className="flex-1 py-2.5 rounded-xl font-bold text-[14px] transition-all border bg-[#ffc000] border-[#ffc000] text-[#424242]"
+                      >
+                        Interview
+                      </button>
+                    )}
+                    {viewingOffer.offer_type === "Position" && (
+                      <button
+                        type="button"
+                        disabled
+                        className="flex-1 py-2.5 rounded-xl font-bold text-[14px] transition-all border bg-[#ffc000] border-[#ffc000] text-[#424242]"
+                      >
+                        Position
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/60 mb-1">Field</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={viewingOffer.field || ""}
+                    className="w-full bg-[#f7f7f7] border border-[#424242]/10 rounded-xl px-4 py-2.5 text-[14px] focus:outline-none transition-all cursor-default"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/60 mb-1">Role Name</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={viewingOffer.role_name || ""}
+                    className="w-full bg-[#f7f7f7] border border-[#424242]/10 rounded-xl px-4 py-2.5 text-[14px] focus:outline-none transition-all cursor-default"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/60 mb-1">Offering Salary Range</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      readOnly
+                      value={viewingOffer.min_salary || ""}
+                      className="w-full bg-[#f7f7f7] border border-[#424242]/10 rounded-xl px-4 py-2.5 text-[14px] focus:outline-none transition-all cursor-default"
+                    />
+                    <span className="text-[#424242]/40 font-bold">-</span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={viewingOffer.max_salary || ""}
+                      className="w-full bg-[#f7f7f7] border border-[#424242]/10 rounded-xl px-4 py-2.5 text-[14px] focus:outline-none transition-all cursor-default"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-[#424242]/10 flex gap-3">
+              <button onClick={() => {}} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black text-[14px] rounded-xl transition-all active:scale-95">
+                Decline Offer
+              </button>
+              <button onClick={() => {}} className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-black text-[14px] rounded-xl transition-all active:scale-95">
+                Accept Offer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

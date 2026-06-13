@@ -164,4 +164,24 @@ function initSchema(db: Database.Database) {
     // Column already exists — ignore
   }
 
+  // ── Safe migration: add employer_offers table ──
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS employer_offers (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        employer_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        candidate_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        offer_type   TEXT    NOT NULL,
+        field        TEXT    NOT NULL,
+        role_name    TEXT    NOT NULL,
+        min_salary   INTEGER,
+        max_salary   INTEGER,
+        status       TEXT    NOT NULL DEFAULT 'pending',
+        created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+  } catch (e) {
+    console.error("Failed to create employer_offers table", e);
+  }
+
 }

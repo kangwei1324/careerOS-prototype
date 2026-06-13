@@ -36,18 +36,24 @@ export async function GET(req: NextRequest) {
   }
 
   const db = getDb();
-  const interests = db
+  const interestsAndOffers = db
     .prepare(
-      `SELECT ep.company_name, ei.created_at, u.username
-       FROM employer_interests ei
-       JOIN employer_profiles ep ON ep.user_id = ei.employer_id
-       JOIN users u ON u.id = ei.employer_id
-       WHERE ei.candidate_id = ?
-       ORDER BY ei.created_at DESC`
+      `SELECT u.username, ep.company_name, 
+              MAX(COALESCE(ei.created_at, eo.created_at)) as created_at,
+              eo.offer_type, eo.field, eo.role_name, eo.min_salary, eo.max_salary, eo.status,
+              MAX(ei.employer_id IS NOT NULL) as has_interest,
+              MAX(eo.id IS NOT NULL) as has_offer
+       FROM users u
+       JOIN employer_profiles ep ON ep.user_id = u.id
+       LEFT JOIN employer_interests ei ON ei.employer_id = u.id AND ei.candidate_id = ?
+       LEFT JOIN employer_offers eo ON eo.employer_id = u.id AND eo.candidate_id = ?
+       WHERE ei.candidate_id = ? OR eo.candidate_id = ?
+       GROUP BY u.id
+       ORDER BY created_at DESC`
     )
-    .all(Number(candidateId)) as Array<{ company_name: string; created_at: string; username: string }>;
+    .all(Number(candidateId), Number(candidateId), Number(candidateId), Number(candidateId)) as Array<any>;
 
-  return NextResponse.json({ count: interests.length, employers: interests });
+  return NextResponse.json({ count: interestsAndOffers.length, employers: interestsAndOffers });
 }
 
 // DELETE /api/interest — employer removes interest in a candidate
