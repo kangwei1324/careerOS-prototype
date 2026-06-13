@@ -16,20 +16,21 @@ export async function POST(request: Request) {
     }
 
     const db = getDb();
-    const insertOffer = db.prepare(`
-      INSERT INTO employer_offers (employer_id, candidate_id, offer_type, field, role_name, min_salary, max_salary, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-    `);
-
-    insertOffer.run(
-      session.userId,
-      candidateId,
-      offerType,
-      field,
-      roleName,
-      minSalary || null,
-      maxSalary || null
-    );
+    await db.execute({
+      sql: `
+        INSERT INTO employer_offers (employer_id, candidate_id, offer_type, field, role_name, min_salary, max_salary, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+      `,
+      args: [
+        session.userId,
+        candidateId,
+        offerType,
+        field,
+        roleName,
+        minSalary || null,
+        maxSalary || null
+      ]
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

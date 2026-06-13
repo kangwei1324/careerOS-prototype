@@ -11,11 +11,8 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getDb();
-    const user = db
-      .prepare("SELECT id, password, role, username FROM users WHERE email = ?")
-      .get(email) as
-      | { id: number; password: string; role: string; username: string }
-      | undefined;
+    const user = (await db.execute({ sql: "SELECT id, password, role, username FROM users WHERE email = ?", args: [email] })).rows[0] as unknown as | { id: number; password: string; role: string; username: string }
+          | undefined;
 
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

@@ -15,9 +15,7 @@ export async function GET(req: NextRequest) {
   const db = getDb();
 
   // 1. Get the current employer's profile description
-  const employer = db
-    .prepare("SELECT description FROM employer_profiles WHERE user_id = ?")
-    .get(session.userId) as { description: string } | undefined;
+  const employer = (await db.execute({ sql: "SELECT description FROM employer_profiles WHERE user_id = ?", args: [session.userId] })).rows[0] as unknown as { description: string } | undefined;
 
   if (!employer || !employer.description.trim()) {
     return NextResponse.json([]); // Return empty if search requirements are empty
@@ -37,7 +35,7 @@ export async function GET(req: NextRequest) {
     skills_json: string | null;
   }
 
-  const cached = db.prepare(`
+  const cached = (await db.execute({ sql: `
     SELECT s.candidate_id, s.reason,
            u.username, cp.name, cp.headline, cp.location, cp.field, cp.skills_json
     FROM ai_suggestions s
@@ -45,14 +43,12 @@ export async function GET(req: NextRequest) {
     JOIN candidate_profiles cp ON cp.user_id = s.candidate_id
     WHERE s.employer_id = ? AND s.description_hash = ?
     ORDER BY s.id ASC
-  `).all(session.userId, descHash) as CachedSuggestionRow[];
+  `, args: [session.userId, descHash] })).rows as unknown as CachedSuggestionRow[];
 
   if (!forceRefresh && cached.length > 0) {
     // Return cached results with enriched profile data
-    const results = cached.map((c) => {
-      const entriesCount = db
-        .prepare("SELECT COUNT(*) as count FROM portfolio_entries WHERE user_id = ?")
-        .get(c.candidate_id) as { count: number };
+    const results = await Promise.all(cached.map(async (c) => {
+      const entriesCount = (await db.execute({ sql: "SELECT COUNT(*) as count FROM portfolio_entries WHERE user_id = ?", args: [c.candidate_id] })).rows[0] as unknown as { count: number };
 
       return {
         id: c.candidate_id,
@@ -65,7 +61,7 @@ export async function GET(req: NextRequest) {
         entry_count: entriesCount?.count || 0,
         reason: c.reason,
       };
-    });
+    }));
     return NextResponse.json(results);
   }
 
@@ -81,7 +77,7 @@ export async function GET(req: NextRequest) {
     bio: string | null;
   }
 
-  const candidatesRaw = db.prepare(`
+  const candidatesRaw = (await db.execute(`
     SELECT
       u.id, u.username,
       cp.name, cp.headline, cp.location, cp.field,
@@ -89,44 +85,44 @@ export async function GET(req: NextRequest) {
     FROM users u
     JOIN candidate_profiles cp ON cp.user_id = u.id
     WHERE u.role = 'candidate'
-  `).all() as CandidateRawRow[];
+  `)).rows as unknown as CandidateRawRow[];
 
   if (candidatesRaw.length === 0) {
     return NextResponse.json([]);
   }
 
   // 4. For each candidate, fetch recent portfolio logs and section data to build a summary
-  const candidatesForAi = candidatesRaw.map((c) => {
-    const entries = db.prepare(`
+  const candidatesForAi = await Promise.all(candidatesRaw.map(async (c) => {
+    const entries = (await db.execute({ sql: `
       SELECT polished_entry, category
       FROM portfolio_entries
       WHERE user_id = ?
       ORDER BY entry_date DESC
       LIMIT 6
-    `).all(c.id) as Array<{ polished_entry: string; category: string }>;
+    `, args: [c.id] })).rows as unknown as Array<{ polished_entry: string; category: string }>;
 
     const portfolioSummary = entries.map((e) => `[${e.category}] ${e.polished_entry}`).join("; ");
 
-    const workExperience = db.prepare(`
+    const workExperience = (await db.execute({ sql: `
       SELECT title, company, start_date, end_date, description
       FROM work_experience
       WHERE user_id = ?
       ORDER BY start_date DESC
-    `).all(c.id) as Array<{ title: string; company: string; start_date: string; end_date: string | null; description: string }>;
+    `, args: [c.id] })).rows as unknown as Array<{ title: string; company: string; start_date: string; end_date: string | null; description: string }>;
 
-    const education = db.prepare(`
+    const education = (await db.execute({ sql: `
       SELECT institution, degree, start_date, end_date
       FROM education
       WHERE user_id = ?
       ORDER BY start_date DESC
-    `).all(c.id) as Array<{ institution: string; degree: string; start_date: string; end_date: string | null }>;
+    `, args: [c.id] })).rows as unknown as Array<{ institution: string; degree: string; start_date: string; end_date: string | null }>;
 
-    const awards = db.prepare(`
+    const awards = (await db.execute({ sql: `
       SELECT title, issuer, award_date
       FROM honours_awards
       WHERE user_id = ?
       ORDER BY award_date DESC
-    `).all(c.id) as Array<{ title: string; issuer: string; award_date: string }>;
+    `, args: [c.id] })).rows as unknown as Array<{ title: string; issuer: string; award_date: string }>;
 
     return {
       id: c.id,
@@ -141,7 +137,7 @@ export async function GET(req: NextRequest) {
       education,
       awards
     };
-  });
+  }));
 
   // 5. Send to Gemini for ranking and reasons
   let aiMatches = await suggestCandidates(employer.description, candidatesForAi);
@@ -157,26 +153,22 @@ export async function GET(req: NextRequest) {
 
   // 6. Save results to cache
   //    First clear old suggestions for this employer
-  db.prepare("DELETE FROM ai_suggestions WHERE employer_id = ?").run(session.userId);
-
-  const insertStmt = db.prepare(
-    `INSERT INTO ai_suggestions (employer_id, candidate_id, reason, description_hash)
-     VALUES (?, ?, ?, ?)`
-  );
+  await db.execute({ sql: "DELETE FROM ai_suggestions WHERE employer_id = ?", args: [session.userId] });
 
   for (const match of aiMatches) {
-    insertStmt.run(session.userId, match.id, match.reason, descHash);
+    await db.execute({
+      sql: `INSERT INTO ai_suggestions (employer_id, candidate_id, reason, description_hash) VALUES (?, ?, ?, ?)`,
+      args: [session.userId, match.id, match.reason, descHash]
+    });
   }
 
   // 7. Build full profiles response for recommended matches
-  const matchedCandidates = aiMatches.map((match) => {
+  const matchedCandidates = (await Promise.all(aiMatches.map(async (match) => {
     const rawCandidate = candidatesRaw.find((c) => c.id === match.id);
     if (!rawCandidate) return null;
 
     // Get count of portfolio entries
-    const entriesCount = db
-      .prepare("SELECT COUNT(*) as count FROM portfolio_entries WHERE user_id = ?")
-      .get(rawCandidate.id) as { count: number };
+    const entriesCount = (await db.execute({ sql: "SELECT COUNT(*) as count FROM portfolio_entries WHERE user_id = ?", args: [rawCandidate.id] })).rows[0] as unknown as { count: number };
 
     return {
       id: rawCandidate.id,
@@ -189,7 +181,7 @@ export async function GET(req: NextRequest) {
       entry_count: entriesCount?.count || 0,
       reason: match.reason
     };
-  }).filter(Boolean);
+  }))).filter(Boolean);
 
   return NextResponse.json(matchedCandidates);
 }

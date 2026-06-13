@@ -9,7 +9,7 @@ export async function GET() {
   }
 
   const db = getDb();
-  const candidates = db.prepare(`
+  const candidates = (await db.execute({ sql: `
     SELECT
       u.id, u.username,
       cp.name, cp.headline, cp.location, cp.field,
@@ -22,7 +22,7 @@ export async function GET() {
     WHERE ei.employer_id = ?
     GROUP BY u.id
     ORDER BY ei.created_at DESC
-  `).all(session.userId) as any[];
+  `, args: [session.userId] })).rows as unknown as any[];
 
   return NextResponse.json(
     candidates.map((c) => ({ ...c, skills: JSON.parse(c.skills_json || "[]") }))

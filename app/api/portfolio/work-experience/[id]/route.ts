@@ -14,19 +14,15 @@ export async function PATCH(
   const { title, company, start_date, end_date, description } = await req.json();
 
   const db = getDb();
-  const entry = db
-    .prepare("SELECT user_id FROM work_experience WHERE id = ?")
-    .get(Number(id)) as { user_id: number } | undefined;
+  const entry = (await db.execute({ sql: "SELECT user_id FROM work_experience WHERE id = ?", args: [Number(id)] })).rows[0] as unknown as { user_id: number } | undefined;
 
   if (!entry || entry.user_id !== session.userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  db.prepare(
-    `UPDATE work_experience
+  await db.execute({ sql: `UPDATE work_experience
      SET title = ?, company = ?, start_date = ?, end_date = ?, description = ?
-     WHERE id = ?`
-  ).run(title, company, start_date, end_date ?? null, description ?? "", Number(id));
+     WHERE id = ?`, args: [title, company, start_date, end_date ?? null, description ?? "", Number(id)] });
 
   return NextResponse.json({ ok: true });
 }
@@ -41,14 +37,12 @@ export async function DELETE(
 
   const { id } = await params;
   const db = getDb();
-  const entry = db
-    .prepare("SELECT user_id FROM work_experience WHERE id = ?")
-    .get(Number(id)) as { user_id: number } | undefined;
+  const entry = (await db.execute({ sql: "SELECT user_id FROM work_experience WHERE id = ?", args: [Number(id)] })).rows[0] as unknown as { user_id: number } | undefined;
 
   if (!entry || entry.user_id !== session.userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  db.prepare("DELETE FROM work_experience WHERE id = ?").run(Number(id));
+  await db.execute({ sql: "DELETE FROM work_experience WHERE id = ?", args: [Number(id)] });
   return NextResponse.json({ ok: true });
 }

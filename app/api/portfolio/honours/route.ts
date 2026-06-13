@@ -8,14 +8,10 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT id, title, issuer, award_date
+  const rows = (await db.execute({ sql: `SELECT id, title, issuer, award_date
        FROM honours_awards
        WHERE user_id = ?
-       ORDER BY award_date DESC, created_at DESC`
-    )
-    .all(session.userId);
+       ORDER BY award_date DESC, created_at DESC`, args: [session.userId] })).rows;
 
   return NextResponse.json(rows);
 }
@@ -31,12 +27,8 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  const result = db
-    .prepare(
-      `INSERT INTO honours_awards (user_id, title, issuer, award_date)
-       VALUES (?, ?, ?, ?)`
-    )
-    .run(session.userId, title, issuer ?? "", award_date);
+  const result = await db.execute({ sql: `INSERT INTO honours_awards (user_id, title, issuer, award_date)
+       VALUES (?, ?, ?, ?)`, args: [session.userId, title, issuer ?? "", award_date] });
 
   return NextResponse.json({ id: result.lastInsertRowid });
 }

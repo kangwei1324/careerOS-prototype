@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     entry_count: number;
   }
 
-  let candidates = db.prepare(query).all(...args) as CandidateRow[];
+  let candidates = (await db.execute({ sql: query, args: [...args] })).rows as unknown as CandidateRow[];
 
   // Client-side skill filter (SQLite JSON querying is limited)
   if (skillsParam) {

@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { createClient, Client } from "@libsql/client";
 import path from "path";
 import fs from "fs";
 
@@ -6,22 +6,31 @@ import fs from "fs";
 const DATA_DIR = path.join(process.cwd(), "data");
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const DB_PATH = path.join(DATA_DIR, "careeros.db");
+const LOCAL_DB_PATH = `file:${path.join(DATA_DIR, "careeros.db")}`;
 
-let _db: Database.Database | null = null;
+let _db: Client | null = null;
+let _schemaInitialized = false;
 
-export function getDb(): Database.Database {
+export function getDb(): Client {
   if (_db) return _db;
-  _db = new Database(DB_PATH);
-  _db.pragma("journal_mode = WAL");
-  _db.pragma("foreign_keys = ON");
-  initSchema(_db);
+  
+  const url = process.env.TURSO_DATABASE_URL || LOCAL_DB_PATH;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+
+  _db = createClient({
+    url,
+    authToken,
+  });
+
   return _db;
 }
 
 // ── Schema ───────────────────────────────────────────────────────
-function initSchema(db: Database.Database) {
-  db.exec(`
+export async function initDbSchema(): Promise<void> {
+  if (_schemaInitialized) return;
+  const db = getDb();
+
+  await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       email       TEXT    NOT NULL UNIQUE,
@@ -110,63 +119,17 @@ function initSchema(db: Database.Database) {
     );
   `);
 
-  // ── Safe migration: add location to employer_profiles if missing ──
-  try {
-    db.exec(`ALTER TABLE employer_profiles ADD COLUMN location TEXT NOT NULL DEFAULT ''`);
-  } catch {
-    // Column already exists — ignore
-  }
-
-  // ── Safe migration: add socials_json if missing ──
-  try {
-    db.exec(`ALTER TABLE candidate_profiles ADD COLUMN socials_json TEXT NOT NULL DEFAULT '{}'`);
-  } catch {
-    // Column already exists — ignore
-  }
-  try {
-    db.exec(`ALTER TABLE employer_profiles ADD COLUMN socials_json TEXT NOT NULL DEFAULT '{}'`);
-  } catch {
-    // Column already exists — ignore
-  }
-
-  // ── Safe migration: add company_description (separate from "description" used for AI matching) ──
-  try {
-    db.exec(`ALTER TABLE employer_profiles ADD COLUMN company_description TEXT NOT NULL DEFAULT ''`);
-  } catch {
-    // Column already exists — ignore
-  }
-
-  // ── Safe migration: add media_json (image attachments) to portfolio_entries ──
-  try {
-    db.exec(`ALTER TABLE portfolio_entries ADD COLUMN media_json TEXT NOT NULL DEFAULT '[]'`);
-  } catch {
-    // Column already exists — ignore
-  }
-
-  // ── Safe migration: add links_json (proof links) to portfolio_entries ──
-  try {
-    db.exec(`ALTER TABLE portfolio_entries ADD COLUMN links_json TEXT NOT NULL DEFAULT '[]'`);
-  } catch {
-    // Column already exists — ignore
-  }
-
-  // ── Safe migration: add pinned_type (work_experience | education | honours_awards) ──
-  try {
-    db.exec(`ALTER TABLE portfolio_entries ADD COLUMN pinned_type TEXT`);
-  } catch {
-    // Column already exists — ignore
-  }
-
-  // ── Safe migration: add pinned_id (FK to the parent section row) ──
-  try {
-    db.exec(`ALTER TABLE portfolio_entries ADD COLUMN pinned_id INTEGER`);
-  } catch {
-    // Column already exists — ignore
-  }
-
-  // ── Safe migration: add employer_offers table ──
-  try {
-    db.exec(`
+  // Safe migrations
+  const migrations = [
+    `ALTER TABLE employer_profiles ADD COLUMN location TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE candidate_profiles ADD COLUMN socials_json TEXT NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE employer_profiles ADD COLUMN socials_json TEXT NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE employer_profiles ADD COLUMN company_description TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE portfolio_entries ADD COLUMN media_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE portfolio_entries ADD COLUMN links_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE portfolio_entries ADD COLUMN pinned_type TEXT`,
+    `ALTER TABLE portfolio_entries ADD COLUMN pinned_id INTEGER`,
+    `
       CREATE TABLE IF NOT EXISTS employer_offers (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
         employer_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -179,14 +142,8 @@ function initSchema(db: Database.Database) {
         status       TEXT    NOT NULL DEFAULT 'pending',
         created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
       )
-    `);
-  } catch (e) {
-    console.error("Failed to create employer_offers table", e);
-  }
-
-  // ── Safe migration: add ai_suggestions table ──
-  try {
-    db.exec(`
+    `,
+    `
       CREATE TABLE IF NOT EXISTS ai_suggestions (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
         employer_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -195,9 +152,16 @@ function initSchema(db: Database.Database) {
         description_hash TEXT    NOT NULL,
         created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
       )
-    `);
-  } catch (e) {
-    console.error("Failed to create ai_suggestions table", e);
+    `
+  ];
+
+  for (const m of migrations) {
+    try {
+      await db.execute(m);
+    } catch (e) {
+      // Ignore existing column errors
+    }
   }
 
+  _schemaInitialized = true;
 }

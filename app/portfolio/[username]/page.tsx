@@ -28,47 +28,28 @@ export default async function PublicPortfolioPage({
   const { username } = await params;
   const db = getDb();
 
-  const user = db
-    .prepare("SELECT id FROM users WHERE username = ? AND role = 'candidate'")
-    .get(username) as { id: number } | undefined;
+  const user = (await db.execute({ sql: "SELECT id FROM users WHERE username = ? AND role = 'candidate'", args: [username] })).rows[0] as unknown as { id: number } | undefined;
 
   if (!user) notFound();
 
-  const profileRow = db
-    .prepare("SELECT name, headline, location, field, bio, skills_json, socials_json FROM candidate_profiles WHERE user_id = ?")
-    .get(user.id) as any;
+  const profileRow = (await db.execute({ sql: "SELECT name, headline, location, field, bio, skills_json, socials_json FROM candidate_profiles WHERE user_id = ?", args: [user.id] })).rows[0] as any;
 
-  const entries = db
-    .prepare
-      (`SELECT id, polished_entry, category, entry_date, skills_json, media_json, links_json, pinned_type, pinned_id
+  const entries = (await db.execute({ sql: `SELECT id, polished_entry, category, entry_date, skills_json, media_json, links_json, pinned_type, pinned_id
        FROM portfolio_entries
        WHERE user_id = ?
-       ORDER BY entry_date DESC, created_at DESC`)
-    .all(user.id) as any[];
+       ORDER BY entry_date DESC, created_at DESC`, args: [user.id] })).rows as unknown as any[];
 
-  const workExperience = db
-    .prepare(
-      `SELECT id, title, company, start_date, end_date, description
+  const workExperience = (await db.execute({ sql: `SELECT id, title, company, start_date, end_date, description
        FROM work_experience WHERE user_id = ?
-       ORDER BY start_date DESC, created_at DESC`
-    )
-    .all(user.id) as WorkExperience[];
+       ORDER BY start_date DESC, created_at DESC`, args: [user.id] })).rows as unknown as WorkExperience[];
 
-  const education = db
-    .prepare(
-      `SELECT id, institution, degree, start_date, end_date
+  const education = (await db.execute({ sql: `SELECT id, institution, degree, start_date, end_date
        FROM education WHERE user_id = ?
-       ORDER BY start_date DESC, created_at DESC`
-    )
-    .all(user.id) as Education[];
+       ORDER BY start_date DESC, created_at DESC`, args: [user.id] })).rows as unknown as Education[];
 
-  const honours = db
-    .prepare(
-      `SELECT id, title, issuer, award_date
+  const honours = (await db.execute({ sql: `SELECT id, title, issuer, award_date
        FROM honours_awards WHERE user_id = ?
-       ORDER BY award_date DESC, created_at DESC`
-    )
-    .all(user.id) as HonourAward[];
+       ORDER BY award_date DESC, created_at DESC`, args: [user.id] })).rows as unknown as HonourAward[];
 
   const profile: Profile = {
     name: profileRow?.name ?? username,
@@ -101,9 +82,9 @@ export default async function PublicPortfolioPage({
       profile={profile}
       entries={formattedEntries}
       allSkills={allSkills}
-      workExperience={workExperience}
-      education={education}
-      honours={honours}
+      workExperience={workExperience.map(r => ({ ...r }))}
+      education={education.map(r => ({ ...r }))}
+      honours={honours.map(r => ({ ...r }))}
     />
   );
 }

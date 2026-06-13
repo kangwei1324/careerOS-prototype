@@ -13,11 +13,9 @@ export async function DELETE(
   const { id } = await params;
   const db = getDb();
 
-  const result = db
-    .prepare("DELETE FROM portfolio_entries WHERE id = ? AND user_id = ?")
-    .run(Number(id), session.userId);
+  const result = await db.execute({ sql: "DELETE FROM portfolio_entries WHERE id = ? AND user_id = ?", args: [Number(id), session.userId] });
 
-  if (result.changes === 0) {
+  if (result.rowsAffected === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -36,28 +34,16 @@ export async function PATCH(
   const { polished_entry, media, links, pinned_type, pinned_id } = await req.json();
   const db = getDb();
 
-  const result = db
-    .prepare(
-      `UPDATE portfolio_entries
+  const result = await db.execute({ sql: `UPDATE portfolio_entries
        SET polished_entry = ?,
            media_json     = ?,
            links_json     = ?,
            pinned_type    = ?,
            pinned_id      = ?,
            updated_at     = datetime('now')
-       WHERE id = ? AND user_id = ?`
-    )
-    .run(
-      polished_entry,
-      JSON.stringify(media ?? []),
-      JSON.stringify(links ?? []),
-      pinned_type ?? null,
-      pinned_id   ?? null,
-      Number(id),
-      session.userId
-    );
+       WHERE id = ? AND user_id = ?`, args: [polished_entry, JSON.stringify(media ?? []), JSON.stringify(links ?? []), pinned_type ?? null, pinned_id   ?? null, Number(id), session.userId] });
 
-  if (result.changes === 0) {
+  if (result.rowsAffected === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

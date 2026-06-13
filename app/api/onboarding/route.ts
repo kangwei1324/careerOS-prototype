@@ -10,23 +10,19 @@ export async function GET() {
   const db = getDb();
 
   if (session.role === "candidate") {
-    const profile = db
-      .prepare("SELECT * FROM candidate_profiles WHERE user_id = ?")
-      .get(session.userId) as any;
+    const profile = (await db.execute({ sql: "SELECT * FROM candidate_profiles WHERE user_id = ?", args: [session.userId] })).rows[0] as any;
     return NextResponse.json({
       ...profile,
       skills: JSON.parse(profile?.skills_json || "[]"),
       socials: JSON.parse(profile?.socials_json || "{}")
     });
   } else {
-    const profile = db
-      .prepare(`
+    const profile = (await db.execute({ sql: `
         SELECT ep.*, u.username
         FROM employer_profiles ep
         JOIN users u ON u.id = ep.user_id
         WHERE ep.user_id = ?
-      `)
-      .get(session.userId) as any;
+      `, args: [session.userId] })).rows[0] as any;
     return NextResponse.json({
       ...profile,
       socials: JSON.parse(profile?.socials_json || "{}")
@@ -46,37 +42,15 @@ export async function POST(req: NextRequest) {
     const { name, headline, location, field, experience_years, skills, socials, bio } = body;
     // Store experience_years as a string so values like "10+" survive the round-trip
     const expYears = experience_years != null ? String(experience_years) : "0";
-    db.prepare(
-      `UPDATE candidate_profiles
+    await db.execute({ sql: `UPDATE candidate_profiles
        SET name = ?, headline = ?, location = ?, field = ?,
            experience_years = ?, skills_json = ?, socials_json = ?, bio = ?, updated_at = datetime('now')
-       WHERE user_id = ?`
-    ).run(
-      name ?? "",
-      headline ?? "",
-      location ?? "",
-      field ?? "",
-      expYears,
-      JSON.stringify(skills ?? []),
-      JSON.stringify(socials ?? {}),
-      bio ?? "",
-      session.userId
-    );
+       WHERE user_id = ?`, args: [name ?? "", headline ?? "", location ?? "", field ?? "", expYears, JSON.stringify(skills ?? []), JSON.stringify(socials ?? {}), bio ?? "", session.userId] });
   } else {
     const { company_name, industry, location, description, company_description, socials } = body;
-    db.prepare(
-      `UPDATE employer_profiles
+    await db.execute({ sql: `UPDATE employer_profiles
        SET company_name = ?, industry = ?, location = ?, description = ?, company_description = ?, socials_json = ?, updated_at = datetime('now')
-       WHERE user_id = ?`
-    ).run(
-      company_name ?? "",
-      industry ?? "",
-      location ?? "",
-      description ?? "",
-      company_description ?? "",
-      JSON.stringify(socials ?? {}),
-      session.userId
-    );
+       WHERE user_id = ?`, args: [company_name ?? "", industry ?? "", location ?? "", description ?? "", company_description ?? "", JSON.stringify(socials ?? {}), session.userId] });
   }
 
   return NextResponse.json({ ok: true });

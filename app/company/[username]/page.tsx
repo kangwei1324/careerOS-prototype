@@ -10,17 +10,11 @@ export default async function CompanyProfilePage({
   const { username } = await params;
   const db = getDb();
 
-  const user = db
-    .prepare("SELECT id FROM users WHERE username = ? AND role = 'employer'")
-    .get(username) as { id: number } | undefined;
+  const user = (await db.execute({ sql: "SELECT id FROM users WHERE username = ? AND role = 'employer'", args: [username] })).rows[0] as unknown as { id: number } | undefined;
 
   if (!user) notFound();
 
-  const profile = db
-    .prepare(
-      "SELECT company_name, industry, location, description, company_description, socials_json FROM employer_profiles WHERE user_id = ?"
-    )
-    .get(user.id) as any;
+  const profile = (await db.execute({ sql: "SELECT company_name, industry, location, description, company_description, socials_json FROM employer_profiles WHERE user_id = ?", args: [user.id] })).rows[0] as any;
 
   return (
     <CompanyProfileClient

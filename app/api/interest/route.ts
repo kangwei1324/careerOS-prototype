@@ -17,12 +17,10 @@ export async function POST(req: NextRequest) {
   const db = getDb();
 
   // Record the interest (UNIQUE constraint handles duplicates)
-  const result = db.prepare(
-    `INSERT OR IGNORE INTO employer_interests (employer_id, candidate_id) VALUES (?, ?)`
-  ).run(session.userId, candidateId);
+  const result = await db.execute({ sql: `INSERT OR IGNORE INTO employer_interests (employer_id, candidate_id) VALUES (?, ?)`, args: [session.userId, candidateId] });
 
   // inserted = true only if it was a new row (not a duplicate)
-  const inserted = result.changes > 0;
+  const inserted = result.rowsAffected > 0;
 
   return NextResponse.json({ ok: true, inserted });
 }
@@ -36,9 +34,7 @@ export async function GET(req: NextRequest) {
   }
 
   const db = getDb();
-  const interestsAndOffers = db
-    .prepare(
-      `SELECT u.username, ep.company_name, 
+  const interestsAndOffers = (await db.execute({ sql: `SELECT u.username, ep.company_name, 
               MAX(COALESCE(ei.created_at, eo.created_at)) as created_at,
               eo.offer_type, eo.field, eo.role_name, eo.min_salary, eo.max_salary, eo.status,
               MAX(ei.employer_id IS NOT NULL) as has_interest,
@@ -49,9 +45,7 @@ export async function GET(req: NextRequest) {
        LEFT JOIN employer_offers eo ON eo.employer_id = u.id AND eo.candidate_id = ?
        WHERE ei.candidate_id = ? OR eo.candidate_id = ?
        GROUP BY u.id
-       ORDER BY created_at DESC`
-    )
-    .all(Number(candidateId), Number(candidateId), Number(candidateId), Number(candidateId)) as Array<any>;
+       ORDER BY created_at DESC`, args: [Number(candidateId), Number(candidateId), Number(candidateId), Number(candidateId)] })).rows as unknown as Array<any>;
 
   return NextResponse.json({ count: interestsAndOffers.length, employers: interestsAndOffers });
 }
@@ -69,10 +63,8 @@ export async function DELETE(req: NextRequest) {
   }
 
   const db = getDb();
-  const result = db.prepare(
-    `DELETE FROM employer_interests WHERE employer_id = ? AND candidate_id = ?`
-  ).run(session.userId, candidateId);
+  const result = await db.execute({ sql: `DELETE FROM employer_interests WHERE employer_id = ? AND candidate_id = ?`, args: [session.userId, candidateId] });
 
-  const deleted = result.changes > 0;
+  const deleted = result.rowsAffected > 0;
   return NextResponse.json({ ok: true, deleted });
 }

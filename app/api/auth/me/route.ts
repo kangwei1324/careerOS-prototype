@@ -13,14 +13,10 @@ export async function GET(req: NextRequest) {
   let name = "";
 
   if (session.role === "candidate") {
-    const profile = db
-      .prepare("SELECT name FROM candidate_profiles WHERE user_id = ?")
-      .get(session.userId) as { name: string } | undefined;
+    const profile = (await db.execute({ sql: "SELECT name FROM candidate_profiles WHERE user_id = ?", args: [session.userId] })).rows[0] as unknown as { name: string } | undefined;
     name = profile?.name ?? "";
   } else {
-    const profile = db
-      .prepare("SELECT company_name FROM employer_profiles WHERE user_id = ?")
-      .get(session.userId) as { company_name: string } | undefined;
+    const profile = (await db.execute({ sql: "SELECT company_name FROM employer_profiles WHERE user_id = ?", args: [session.userId] })).rows[0] as unknown as { company_name: string } | undefined;
     name = profile?.company_name ?? "";
   }
 

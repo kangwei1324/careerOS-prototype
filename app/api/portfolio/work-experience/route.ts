@@ -8,14 +8,10 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT id, title, company, start_date, end_date, description
+  const rows = (await db.execute({ sql: `SELECT id, title, company, start_date, end_date, description
        FROM work_experience
        WHERE user_id = ?
-       ORDER BY start_date DESC, created_at DESC`
-    )
-    .all(session.userId);
+       ORDER BY start_date DESC, created_at DESC`, args: [session.userId] })).rows;
 
   return NextResponse.json(rows);
 }
@@ -31,12 +27,8 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  const result = db
-    .prepare(
-      `INSERT INTO work_experience (user_id, title, company, start_date, end_date, description)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    )
-    .run(session.userId, title, company, start_date, end_date ?? null, description ?? "");
+  const result = await db.execute({ sql: `INSERT INTO work_experience (user_id, title, company, start_date, end_date, description)
+       VALUES (?, ?, ?, ?, ?, ?)`, args: [session.userId, title, company, start_date, end_date ?? null, description ?? ""] });
 
   return NextResponse.json({ id: result.lastInsertRowid });
 }

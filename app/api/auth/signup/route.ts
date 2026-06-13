@@ -16,31 +16,23 @@ export async function POST(req: NextRequest) {
     const db = getDb();
 
     // Check if email already exists
-    const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+    const existing = (await db.execute({ sql: "SELECT id FROM users WHERE email = ?", args: [email] })).rows[0];
     if (existing) {
       return NextResponse.json({ error: "Email already registered" }, { status: 409 });
     }
 
     const hashed = await hashPassword(password);
-    const username = uniqueUsername(email);
+    const username = await uniqueUsername(email);
 
-    const result = db
-      .prepare(
-        "INSERT INTO users (email, password, role, username) VALUES (?, ?, ?, ?)"
-      )
-      .run(email, hashed, role, username);
+    const result = await db.execute({ sql: "INSERT INTO users (email, password, role, username) VALUES (?, ?, ?, ?)", args: [email, hashed, role, username] });
 
-    const userId = result.lastInsertRowid as number;
+    const userId = Number(result.lastInsertRowid);
 
     // Create empty profile record
     if (role === "candidate") {
-      db.prepare(
-        "INSERT INTO candidate_profiles (user_id) VALUES (?)"
-      ).run(userId);
+      await db.execute({ sql: "INSERT INTO candidate_profiles (user_id) VALUES (?)", args: [userId] });
     } else {
-      db.prepare(
-        "INSERT INTO employer_profiles (user_id) VALUES (?)"
-      ).run(userId);
+      await db.execute({ sql: "INSERT INTO employer_profiles (user_id) VALUES (?)", args: [userId] });
     }
 
     await createSession({ userId, role, username });

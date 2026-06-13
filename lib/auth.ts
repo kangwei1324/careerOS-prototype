@@ -91,10 +91,10 @@ export function generateUsername(email: string): string {
 }
 
 // ── Ensure unique username ───────────────────────────────────────
-export function uniqueUsername(email: string): string {
+export async function uniqueUsername(email: string): Promise<string> {
   const db = getDb();
   let username = generateUsername(email);
-  while (db.prepare("SELECT id FROM users WHERE username = ?").get(username)) {
+  while ((await db.execute({ sql: "SELECT id FROM users WHERE username = ?", args: [username] })).rows[0]) {
     username = generateUsername(email);
   }
   return username;

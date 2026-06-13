@@ -11,65 +11,35 @@ export default async function TalentProfilePage({
   const { username } = await params;
   const db = getDb();
 
-  const user = db
-    .prepare("SELECT id FROM users WHERE username = ? AND role = 'candidate'")
-    .get(username) as { id: number } | undefined;
+  const user = (await db.execute({ sql: "SELECT id FROM users WHERE username = ? AND role = 'candidate'", args: [username] })).rows[0] as unknown as { id: number } | undefined;
 
   if (!user) notFound();
 
-  const profile = db
-    .prepare(
-      "SELECT name, headline, location, field, bio, skills_json, socials_json FROM candidate_profiles WHERE user_id = ?"
-    )
-    .get(user.id) as any;
+  const profile = (await db.execute({ sql: "SELECT name, headline, location, field, bio, skills_json, socials_json FROM candidate_profiles WHERE user_id = ?", args: [user.id] })).rows[0] as any;
 
-  const entries = db
-    .prepare(
-      `SELECT id, polished_entry, category, entry_date, skills_json, media_json, links_json, pinned_type, pinned_id
+  const entries = (await db.execute({ sql: `SELECT id, polished_entry, category, entry_date, skills_json, media_json, links_json, pinned_type, pinned_id
        FROM portfolio_entries
        WHERE user_id = ?
-       ORDER BY entry_date DESC, created_at DESC`
-    )
-    .all(user.id) as any[];
+       ORDER BY entry_date DESC, created_at DESC`, args: [user.id] })).rows as unknown as any[];
 
-  const workExperience = db
-    .prepare(
-      `SELECT id, title, company, start_date, end_date, description
+  const workExperience = (await db.execute({ sql: `SELECT id, title, company, start_date, end_date, description
        FROM work_experience WHERE user_id = ?
-       ORDER BY start_date DESC, created_at DESC`
-    )
-    .all(user.id) as any[];
+       ORDER BY start_date DESC, created_at DESC`, args: [user.id] })).rows as unknown as any[];
 
-  const education = db
-    .prepare(
-      `SELECT id, institution, degree, start_date, end_date
+  const education = (await db.execute({ sql: `SELECT id, institution, degree, start_date, end_date
        FROM education WHERE user_id = ?
-       ORDER BY start_date DESC, created_at DESC`
-    )
-    .all(user.id) as any[];
+       ORDER BY start_date DESC, created_at DESC`, args: [user.id] })).rows as unknown as any[];
 
-  const honours = db
-    .prepare(
-      `SELECT id, title, issuer, award_date
+  const honours = (await db.execute({ sql: `SELECT id, title, issuer, award_date
        FROM honours_awards WHERE user_id = ?
-       ORDER BY award_date DESC, created_at DESC`
-    )
-    .all(user.id) as any[];
+       ORDER BY award_date DESC, created_at DESC`, args: [user.id] })).rows as unknown as any[];
 
-  const interests = db
-    .prepare(
-      `SELECT COUNT(*) as count FROM employer_interests WHERE candidate_id = ?`
-    )
-    .get(user.id) as { count: number };
+  const interests = (await db.execute({ sql: `SELECT COUNT(*) as count FROM employer_interests WHERE candidate_id = ?`, args: [user.id] })).rows[0] as unknown as { count: number };
 
   const session = await getSession();
   let hasInterested = false;
   if (session && session.role === "employer") {
-    const interestRecord = db
-      .prepare(
-        "SELECT 1 FROM employer_interests WHERE employer_id = ? AND candidate_id = ?"
-      )
-      .get(session.userId, user.id);
+    const interestRecord = (await db.execute({ sql: "SELECT 1 FROM employer_interests WHERE employer_id = ? AND candidate_id = ?", args: [session.userId, user.id] })).rows[0];
     hasInterested = !!interestRecord;
   }
 
@@ -92,12 +62,11 @@ export default async function TalentProfilePage({
         media: JSON.parse(e.media_json ?? "[]"),
         links: JSON.parse(e.links_json ?? "[]")
       }))}
-      workExperience={workExperience}
-      education={education}
-      honours={honours}
+      workExperience={workExperience.map(r => ({ ...r }))}
+      education={education.map(r => ({ ...r }))}
+      honours={honours.map(r => ({ ...r }))}
       interestCount={interests.count}
       initialInterested={hasInterested}
     />
   );
 }
-

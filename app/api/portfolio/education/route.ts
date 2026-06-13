@@ -8,14 +8,10 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT id, institution, degree, start_date, end_date
+  const rows = (await db.execute({ sql: `SELECT id, institution, degree, start_date, end_date
        FROM education
        WHERE user_id = ?
-       ORDER BY start_date DESC, created_at DESC`
-    )
-    .all(session.userId);
+       ORDER BY start_date DESC, created_at DESC`, args: [session.userId] })).rows;
 
   return NextResponse.json(rows);
 }
@@ -31,12 +27,8 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  const result = db
-    .prepare(
-      `INSERT INTO education (user_id, institution, degree, start_date, end_date)
-       VALUES (?, ?, ?, ?, ?)`
-    )
-    .run(session.userId, institution, degree, start_date, end_date ?? null);
+  const result = await db.execute({ sql: `INSERT INTO education (user_id, institution, degree, start_date, end_date)
+       VALUES (?, ?, ?, ?, ?)`, args: [session.userId, institution, degree, start_date, end_date ?? null] });
 
   return NextResponse.json({ id: result.lastInsertRowid });
 }

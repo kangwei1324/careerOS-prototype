@@ -8,15 +8,11 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const db = getDb();
-  const entries = db
-    .prepare(
-      `SELECT id, raw_log, polished_entry, category, entry_date,
+  const entries = (await db.execute({ sql: `SELECT id, raw_log, polished_entry, category, entry_date,
               skills_json, media_json, links_json, pinned_type, pinned_id, created_at
        FROM portfolio_entries
        WHERE user_id = ?
-       ORDER BY entry_date DESC, created_at DESC`
-    )
-    .all(session.userId);
+       ORDER BY entry_date DESC, created_at DESC`, args: [session.userId] })).rows;
 
   return NextResponse.json(
     entries.map((e: any) => ({
@@ -45,25 +41,10 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  const result = db
-    .prepare(
-      `INSERT INTO portfolio_entries
+  const result = await db.execute({ sql: `INSERT INTO portfolio_entries
          (user_id, raw_log, polished_entry, category, entry_date,
           skills_json, media_json, links_json, pinned_type, pinned_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      session.userId,
-      raw_log,
-      polished_entry,
-      category    ?? "Other",
-      entry_date,
-      JSON.stringify(skills ?? []),
-      JSON.stringify(media  ?? []),
-      JSON.stringify(links  ?? []),
-      pinned_type ?? null,
-      pinned_id   ?? null
-    );
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, args: [session.userId, raw_log, polished_entry, category    ?? "Other", entry_date, JSON.stringify(skills ?? []), JSON.stringify(media  ?? []), JSON.stringify(links  ?? []), pinned_type ?? null, pinned_id   ?? null] });
 
   return NextResponse.json({ id: result.lastInsertRowid });
 }
