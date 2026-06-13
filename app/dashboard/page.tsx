@@ -9,11 +9,49 @@ import Footer from "@/components/layout/Footer";
 import { formatDate } from "@/lib/utils";
 import { CATEGORY_COLOURS, type PortfolioEntry, type Signal } from "@/lib/types";
 
+interface Profile {
+  name: string;
+  headline: string;
+  location: string;
+  field: string;
+  skills?: string[];
+  username?: string;
+  company_name?: string;
+  industry?: string;
+  company_description?: string;
+  socials?: {
+    website?: string;
+    linkedin?: string;
+    twitter?: string;
+  };
+  description?: string;
+}
+
+interface ShortlistedCandidate {
+  id: number;
+  name: string;
+  username: string;
+  headline: string;
+  location: string;
+  entry_count: number;
+}
+
+interface SuggestedCandidate {
+  id: number;
+  name: string;
+  username: string;
+  headline: string;
+  location: string;
+  field: string;
+  reason: string;
+  skills: string[];
+}
+
 // ── Candidate Dashboard ──────────────────────────────────────────
 function CandidateDashboard({ username }: { username: string }) {
   const [entries, setEntries] = useState<PortfolioEntry[]>([]);
   const [signals, setSignals] = useState<{ count: number; employers: Signal[] }>({ count: 0, employers: [] });
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewingOffer, setViewingOffer] = useState<Signal | null>(null);
   const user = useAuthStore((s) => s.user);
@@ -44,7 +82,11 @@ function CandidateDashboard({ username }: { username: string }) {
 
   // Sync primarySkills from profile when it loads
   useEffect(() => {
-    if (profile?.skills) setPrimarySkills(Array.isArray(profile.skills) ? profile.skills : []);
+    if (profile?.skills) {
+      Promise.resolve().then(() => {
+        setPrimarySkills(Array.isArray(profile.skills) ? profile.skills : []);
+      });
+    }
   }, [profile]);
 
   const aiOnlySkills: string[] = allSkills
@@ -114,10 +156,10 @@ function CandidateDashboard({ username }: { username: string }) {
           <p className="text-[13px] font-semibold text-[#c4c4c4]/60 mt-1 leading-snug">{profile?.headline}</p>
           <div className="flex flex-wrap gap-3 mt-3">
             <span className="text-[11px] text-[#f8f8f8]/50 flex items-center gap-1">
-              <span aria-hidden="true">📍</span> {profile.location}
+              <span aria-hidden="true">📍</span> {profile?.location}
             </span>
             <span className="text-[11px] text-[#c4c4c4]/50 flex items-center gap-1">
-              <span aria-hidden="true">💼</span> {profile.field}
+              <span aria-hidden="true">💼</span> {profile?.field}
             </span>
           </div>
           <p className="text-white/40 text-[13px] mt-1">{entries.length} portfolio {entries.length === 1 ? "entry" : "entries"} logged</p>
@@ -435,31 +477,16 @@ function CandidateDashboard({ username }: { username: string }) {
 
 // ── Employer Dashboard ───────────────────────────────────────────
 function EmployerDashboard() {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const [shortlist, setShortlist] = useState<any[]>([]);
+  const [shortlist, setShortlist] = useState<ShortlistedCandidate[]>([]);
   const [loadingShortlist, setLoadingShortlist] = useState(true);
 
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestedCandidate[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/onboarding")
-      .then((r) => r.json())
-      .then((p) => {
-        setProfile(p);
-        setDescription(p?.description ?? "");
-        if (p?.description) {
-          fetchSuggestions();
-        }
-      })
-      .catch(() => null);
-
-    fetchShortlist();
-  }, []);
 
   const fetchShortlist = async () => {
     setLoadingShortlist(true);
@@ -487,6 +514,23 @@ function EmployerDashboard() {
       setLoadingSuggestions(false);
     }
   };
+
+  useEffect(() => {
+    fetch("/api/onboarding")
+      .then((r) => r.json())
+      .then((p) => {
+        setProfile(p);
+        setDescription(p?.description ?? "");
+        if (p?.description) {
+          fetchSuggestions();
+        }
+      })
+      .catch(() => null);
+
+    Promise.resolve().then(() => {
+      fetchShortlist();
+    });
+  }, []);
 
   const removeShortlist = async (candidateId: number) => {
     try {
@@ -633,9 +677,21 @@ function EmployerDashboard() {
 
       {/* AI Suggested Candidates */}
       <div className="bg-white rounded-xl p-6 shadow-[var(--card-shadow)] space-y-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">✨</span>
-          <h2 className="text-[15px] font-black text-[#424242]">AI Suggested Candidates</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">✨</span>
+            <h2 className="text-[15px] font-black text-[#424242]">AI Suggested Candidates</h2>
+          </div>
+          {description.trim() && (
+            <button
+              onClick={() => fetchSuggestions(true)}
+              disabled={loadingSuggestions}
+              className="text-[11px] font-bold text-[#b38600] hover:text-[#e6ac00] flex items-center gap-1 disabled:opacity-50 cursor-pointer transition-colors"
+              title="Refresh suggestions using latest candidate profiles"
+            >
+              🔄 Refresh Matches
+            </button>
+          )}
         </div>
 
         {!description.trim() ? (

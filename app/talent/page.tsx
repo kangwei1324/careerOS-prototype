@@ -17,35 +17,23 @@ export default function TalentPage() {
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ field: "", state: "", city: "", skills: "" });
+  const [filters, setFilters] = useState({ field: "", state: "", city: "", skills: "", q: "" });
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-
+ 
   const hydrated = useHasHydrated();
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (!user) {
-      router.push("/auth/signin");
-      return;
-    }
-    if (user.role !== "employer") {
-      router.push("/dashboard");
-      return;
-    }
-    fetchCandidates();
-  }, [hydrated, user]);
-
+ 
   const fetchCandidates = async (f = filters) => {
     setLoading(true);
     const params = new URLSearchParams();
     if (f.field) params.set("field", f.field);
-
+ 
     // Combine state and city for the location search
     const locationVal = f.city && f.state ? `${f.city}, ${f.state}` : (f.city || f.state || "");
     if (locationVal) params.set("location", locationVal);
-
+ 
     if (f.skills) params.set("skills", f.skills);
-
+    if (f.q) params.set("q", f.q);
+ 
     try {
       const res = await fetch(`/api/talent?${params.toString()}`);
       const data = await res.json();
@@ -58,15 +46,30 @@ export default function TalentPage() {
     }
   };
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!user) {
+      router.push("/auth/signin");
+      return;
+    }
+    if (user.role !== "employer") {
+      router.push("/dashboard");
+      return;
+    }
+    Promise.resolve().then(() => {
+      fetchCandidates();
+    });
+  }, [hydrated, user]);
+ 
   const updateFilter = (k: string, v: string) => setFilters((f) => ({ ...f, [k]: v }));
-
+ 
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) => {
       const next = prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill];
       return next;
     });
   };
-
+ 
   const applyFilters = () => {
     const activeFilters = {
       ...filters,
@@ -74,16 +77,16 @@ export default function TalentPage() {
     };
     fetchCandidates(activeFilters);
   };
-
+ 
   const clearFilters = () => {
-    const cleared = { field: "", state: "", city: "", skills: "" };
+    const cleared = { field: "", state: "", city: "", skills: "", q: "" };
     setFilters(cleared);
     setSelectedSkills([]);
     fetchCandidates(cleared);
   };
-
+ 
   const availableSkills = filters.field ? FIELDS_AND_SKILLS[filters.field] || [] : [];
-
+ 
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
       <AppNavbar />
@@ -92,12 +95,30 @@ export default function TalentPage() {
         <p className="text-[13px] text-[#424242]/50 mb-8">
           Browse candidates by what they actually do — not what they put in a headline.
         </p>
-
+ 
         {/* Filters Panel */}
         <div className="bg-white rounded-xl shadow-[var(--card-shadow)] p-5 mb-8 space-y-4">
           <div className="flex flex-wrap gap-4 items-end">
+            {/* Keyword Search Input */}
+            <div className="flex-[2] min-w-[220px]">
+              <label htmlFor="filter-q" className="block text-[10px] font-black uppercase tracking-widest text-[#424242]/40 mb-1.5">
+                Keyword Search (Names, Bio, Logs)
+              </label>
+              <input
+                id="filter-q"
+                type="text"
+                value={filters.q}
+                onChange={(e) => updateFilter("q", e.target.value)}
+                placeholder="e.g. React, Python, Sydney, leadership..."
+                className="w-full border border-[#424242]/15 rounded-lg px-3 py-2 text-[12px] text-[#424242] outline-none focus:border-[#ffc000] bg-white transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") applyFilters();
+                }}
+              />
+            </div>
+ 
             {/* Field Dropdown */}
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex-1 min-w-[180px]">
               <label htmlFor="filter-field" className="block text-[10px] font-black uppercase tracking-widest text-[#424242]/40 mb-1.5">
                 Field / Domain
               </label>

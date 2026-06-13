@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
-// GET /api/talent?field=...&skills=...&location=...
+// GET /api/talent?field=...&skills=...&location=...&q=...
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const field = searchParams.get("field") ?? "";
   const location = searchParams.get("location") ?? "";
   const skillsParam = searchParams.get("skills") ?? "";
+  const q = searchParams.get("q") ?? "";
 
   const db = getDb();
 
@@ -15,10 +16,9 @@ export async function GET(req: NextRequest) {
       u.id, u.username,
       cp.name, cp.headline, cp.location, cp.field,
       cp.skills_json, cp.bio,
-      COUNT(pe.id) as entry_count
+      (SELECT COUNT(*) FROM portfolio_entries WHERE user_id = u.id) as entry_count
     FROM users u
     JOIN candidate_profiles cp ON cp.user_id = u.id
-    LEFT JOIN portfolio_entries pe ON pe.user_id = u.id
     WHERE u.role = 'candidate'
   `;
 
@@ -32,10 +32,34 @@ export async function GET(req: NextRequest) {
     query += ` AND LOWER(cp.location) LIKE LOWER(?)`;
     args.push(`%${location}%`);
   }
+  if (q) {
+    query += ` AND (
+      LOWER(cp.name) LIKE LOWER(?) OR
+      LOWER(cp.headline) LIKE LOWER(?) OR
+      LOWER(cp.bio) LIKE LOWER(?) OR
+      EXISTS (
+        SELECT 1 FROM portfolio_entries pe 
+        WHERE pe.user_id = u.id AND LOWER(pe.polished_entry) LIKE LOWER(?)
+      )
+    )`;
+    args.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+  }
 
-  query += ` GROUP BY u.id ORDER BY entry_count DESC, u.created_at DESC LIMIT 50`;
+  query += ` ORDER BY entry_count DESC, u.created_at DESC LIMIT 50`;
 
-  let candidates = db.prepare(query).all(...args) as any[];
+  interface CandidateRow {
+    id: number;
+    username: string;
+    name: string | null;
+    headline: string | null;
+    location: string | null;
+    field: string | null;
+    skills_json: string | null;
+    bio: string | null;
+    entry_count: number;
+  }
+
+  let candidates = db.prepare(query).all(...args) as CandidateRow[];
 
   // Client-side skill filter (SQLite JSON querying is limited)
   if (skillsParam) {

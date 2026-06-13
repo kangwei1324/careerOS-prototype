@@ -16,13 +16,11 @@ async function generate(prompt: string): Promise<string> {
   // if the only text came from thought parts, OR if parts[0] is a thought part
   // and no non-thought text follows.
   //
-  // We must manually scan candidates[0].content.parts and find the FIRST
-  // part that has `text` AND does NOT have `thought: true`.
-  const parts: any[] =
-    (response as any).candidates?.[0]?.content?.parts ?? [];
+  const candidates = (response as { candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }> }).candidates;
+  const parts = candidates?.[0]?.content?.parts ?? [];
 
   const textPart = parts.find(
-    (p: any) => typeof p.text === "string" && p.thought !== true
+    (p) => typeof p.text === "string" && p.thought !== true
   );
 
   const text = textPart?.text ?? response.text ?? "";
@@ -278,18 +276,30 @@ export interface SuggestionResult {
 
 export async function suggestCandidates(
   description: string,
-  candidates: Array<{ id: number; name: string; headline: string; field: string; skills: string[]; bio: string; portfolio_summary: string }>
+  candidates: Array<{
+    id: number;
+    name: string;
+    headline: string;
+    location: string;
+    field: string;
+    skills: string[];
+    bio: string;
+    portfolio_summary: string;
+    work_experience: Array<{ title: string; company: string; start_date: string; end_date: string | null; description: string }>;
+    education: Array<{ institution: string; degree: string; start_date: string; end_date: string | null }>;
+    awards: Array<{ title: string; issuer: string; award_date: string }>;
+  }>
 ): Promise<SuggestionResult[]> {
   if (candidates.length === 0) return [];
   const prompt = `You are an expert technical recruiter and talent matching assistant for CareerOS.
 An employer has provided the following requirements for what they are looking for in candidates:
 "${description}"
 
-Here is a list of candidate profiles currently in the platform, including their name, headline, skills, and a summary of their recent portfolio accomplishments:
+Here is a list of candidate profiles currently in the platform, including their name, headline, location, skills, biography, recent portfolio accomplishments, work experience, education history, and honours/awards:
 ${JSON.stringify(candidates, null, 2)}
 
-Identify up to 3 candidates who best match the employer's requirements.
-For each selected candidate, write a concise, professional 1-sentence justification (under "reason") explaining why they are a strong fit based on their specific skills or portfolio entries.
+Identify up to 5 candidates who best match the employer's requirements.
+For each selected candidate, write a concise, professional 1-sentence justification (under "reason") explaining why they are a strong fit based on their specific skills, experience, education, awards, or portfolio entries.
 
 Respond ONLY with a valid JSON array of objects matching this exact format, with no markdown formatting:
 [

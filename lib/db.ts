@@ -184,4 +184,20 @@ function initSchema(db: Database.Database) {
     console.error("Failed to create employer_offers table", e);
   }
 
+  // ── Safe migration: add ai_suggestions table ──
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS ai_suggestions (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        employer_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        candidate_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reason           TEXT    NOT NULL,
+        description_hash TEXT    NOT NULL,
+        created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+  } catch (e) {
+    console.error("Failed to create ai_suggestions table", e);
+  }
+
 }

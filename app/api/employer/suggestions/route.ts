@@ -26,6 +26,17 @@ export async function GET(req: NextRequest) {
   // 2. Check if we have cached suggestions for the same description
   const descHash = crypto.createHash("md5").update(employer.description.trim()).digest("hex");
 
+  interface CachedSuggestionRow {
+    candidate_id: number;
+    reason: string;
+    username: string;
+    name: string | null;
+    headline: string | null;
+    location: string | null;
+    field: string | null;
+    skills_json: string | null;
+  }
+
   const cached = db.prepare(`
     SELECT s.candidate_id, s.reason,
            u.username, cp.name, cp.headline, cp.location, cp.field, cp.skills_json
@@ -34,9 +45,9 @@ export async function GET(req: NextRequest) {
     JOIN candidate_profiles cp ON cp.user_id = s.candidate_id
     WHERE s.employer_id = ? AND s.description_hash = ?
     ORDER BY s.id ASC
-  `).all(session.userId, descHash) as any[];
+  `).all(session.userId, descHash) as CachedSuggestionRow[];
 
-  if (cached.length > 0) {
+  if (!forceRefresh && cached.length > 0) {
     // Return cached results with enriched profile data
     const results = cached.map((c) => {
       const entriesCount = db
@@ -59,6 +70,17 @@ export async function GET(req: NextRequest) {
   }
 
   // 3. No cache — query all candidates and their profiles
+  interface CandidateRawRow {
+    id: number;
+    username: string;
+    name: string | null;
+    headline: string | null;
+    location: string | null;
+    field: string | null;
+    skills_json: string | null;
+    bio: string | null;
+  }
+
   const candidatesRaw = db.prepare(`
     SELECT
       u.id, u.username,
@@ -67,32 +89,57 @@ export async function GET(req: NextRequest) {
     FROM users u
     JOIN candidate_profiles cp ON cp.user_id = u.id
     WHERE u.role = 'candidate'
-  `).all() as any[];
+  `).all() as CandidateRawRow[];
 
   if (candidatesRaw.length === 0) {
     return NextResponse.json([]);
   }
 
-  // 4. For each candidate, fetch recent portfolio logs to build a summary
+  // 4. For each candidate, fetch recent portfolio logs and section data to build a summary
   const candidatesForAi = candidatesRaw.map((c) => {
     const entries = db.prepare(`
       SELECT polished_entry, category
       FROM portfolio_entries
       WHERE user_id = ?
       ORDER BY entry_date DESC
-      LIMIT 3
+      LIMIT 6
     `).all(c.id) as Array<{ polished_entry: string; category: string }>;
 
     const portfolioSummary = entries.map((e) => `[${e.category}] ${e.polished_entry}`).join("; ");
+
+    const workExperience = db.prepare(`
+      SELECT title, company, start_date, end_date, description
+      FROM work_experience
+      WHERE user_id = ?
+      ORDER BY start_date DESC
+    `).all(c.id) as Array<{ title: string; company: string; start_date: string; end_date: string | null; description: string }>;
+
+    const education = db.prepare(`
+      SELECT institution, degree, start_date, end_date
+      FROM education
+      WHERE user_id = ?
+      ORDER BY start_date DESC
+    `).all(c.id) as Array<{ institution: string; degree: string; start_date: string; end_date: string | null }>;
+
+    const awards = db.prepare(`
+      SELECT title, issuer, award_date
+      FROM honours_awards
+      WHERE user_id = ?
+      ORDER BY award_date DESC
+    `).all(c.id) as Array<{ title: string; issuer: string; award_date: string }>;
 
     return {
       id: c.id,
       name: c.name || c.username,
       headline: c.headline || "",
+      location: c.location || "",
       field: c.field || "",
       skills: JSON.parse(c.skills_json || "[]") as string[],
       bio: c.bio || "",
-      portfolio_summary: portfolioSummary || "No portfolio entries yet."
+      portfolio_summary: portfolioSummary || "No portfolio entries yet.",
+      work_experience: workExperience,
+      education,
+      awards
     };
   });
 
