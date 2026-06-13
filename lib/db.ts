@@ -2,25 +2,24 @@ import { createClient, Client } from "@libsql/client";
 import path from "path";
 import fs from "fs";
 
-// ── DB file lives in project root /data/ ────────────────────────
-const DATA_DIR = path.join(process.cwd(), "data");
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const LOCAL_DB_PATH = `file:${path.join(DATA_DIR, "careeros.db")}`;
-
 let _db: Client | null = null;
 let _schemaInitialized = false;
 
 export function getDb(): Client {
   if (_db) return _db;
   
-  const url = process.env.TURSO_DATABASE_URL || LOCAL_DB_PATH;
+  const url = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  _db = createClient({
-    url,
-    authToken,
-  });
+  if (url) {
+    _db = createClient({ url, authToken });
+  } else {
+    // Fallback to local SQLite file
+    const DATA_DIR = path.join(process.cwd(), "data");
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    
+    _db = createClient({ url: `file:${path.join(DATA_DIR, "careeros.db")}` });
+  }
 
   return _db;
 }
