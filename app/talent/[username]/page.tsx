@@ -43,7 +43,7 @@ export default async function TalentProfilePage({
     const interestRecord = (await db.execute({ sql: "SELECT 1 FROM employer_interests WHERE employer_id = ? AND candidate_id = ?", args: [session.userId, user.id] })).rows[0];
     hasInterested = !!interestRecord;
 
-    const offerRecord = (await db.execute({ sql: "SELECT 1 FROM offers WHERE employer_id = ? AND candidate_id = ?", args: [session.userId, user.id] })).rows[0];
+    const offerRecord = (await db.execute({ sql: "SELECT 1 FROM employer_offers WHERE employer_id = ? AND candidate_id = ?", args: [session.userId, user.id] })).rows[0];
     hasSentOffer = !!offerRecord;
   }
 
