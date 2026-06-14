@@ -28,10 +28,7 @@ export default function LandingPage() {
 
       {/* ── Hero ───────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
-        <div className="inline-flex items-center gap-2 bg-[#ffc000]/15 text-[#424242] text-[11px] font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#ffc000] inline-block" />
-          Talentbank Tech Hackathon 2026
-        </div>
+
 
         <h1 className="text-5xl md:text-6xl font-black text-[#424242] leading-[1.05] mb-6 tracking-tight">
           Your career, built

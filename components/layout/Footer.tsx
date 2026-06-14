@@ -117,7 +117,7 @@ export default function Footer() {
         {/* Divider */}
         <div className="border-t border-white/8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
           <p className="text-[11px] text-white/25">
-            © {new Date().getFullYear()} CareerOS. — Talentbank Tech Hackathon 2026
+            © {new Date().getFullYear()} CareerOS.
           </p>
           <p className="text-[11px] text-white/20">All rights reserved.</p>
         </div>
