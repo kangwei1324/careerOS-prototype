@@ -276,6 +276,7 @@ export default function TalentProfileClient({
   honours,
   interestCount,
   initialInterested,
+  hasSentOffer,
 }: {
   candidateId: number;
   username: string;
@@ -286,12 +287,14 @@ export default function TalentProfileClient({
   honours: HonourAward[];
   interestCount: number;
   initialInterested: boolean;
+  hasSentOffer: boolean;
 }) {
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToast();
   const [interested, setInterested] = useState(initialInterested);
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState(interestCount);
+  const [localHasSentOffer, setLocalHasSentOffer] = useState(hasSentOffer);
 
   // Offer modal state
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
@@ -337,6 +340,7 @@ export default function TalentProfileClient({
         setIsOfferModalOpen(false);
         setIsConfirmingOffer(false);
         setOfferForm({ offerType: "Interview", field: "", roleName: "", jobDescription: "", minSalary: "", maxSalary: "" });
+        setLocalHasSentOffer(true);
       } else {
         const data = await res.json();
         throw new Error(data.error || "Failed to submit offer");
@@ -512,9 +516,14 @@ export default function TalentProfileClient({
           {user?.role === "employer" && (
             <button
               onClick={() => setIsOfferModalOpen(true)}
-              className="w-full mt-3 text-[14px] font-black py-3 rounded-xl transition-all active:scale-95 bg-[#ffc000] text-[#424242] hover:bg-[#e6ac00]"
+              disabled={localHasSentOffer}
+              className={`w-full mt-3 text-[14px] font-black py-3 rounded-xl transition-all active:scale-95 ${
+                localHasSentOffer
+                  ? "bg-white/10 text-white/40 cursor-not-allowed"
+                  : "bg-[#ffc000] text-[#424242] hover:bg-[#e6ac00]"
+              }`}
             >
-              Offer application →
+              {localHasSentOffer ? "Offer Sent ✓" : "Offer application →"}
             </button>
           )}
         </div>

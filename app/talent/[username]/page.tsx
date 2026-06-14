@@ -38,9 +38,13 @@ export default async function TalentProfilePage({
 
   const session = await getSession();
   let hasInterested = false;
+  let hasSentOffer = false;
   if (session && session.role === "employer") {
     const interestRecord = (await db.execute({ sql: "SELECT 1 FROM employer_interests WHERE employer_id = ? AND candidate_id = ?", args: [session.userId, user.id] })).rows[0];
     hasInterested = !!interestRecord;
+
+    const offerRecord = (await db.execute({ sql: "SELECT 1 FROM employer_offers WHERE employer_id = ? AND candidate_id = ?", args: [session.userId, user.id] })).rows[0];
+    hasSentOffer = !!offerRecord;
   }
 
   return (
@@ -67,6 +71,7 @@ export default async function TalentProfilePage({
       honours={honours.map(r => ({ ...r }))}
       interestCount={interests.count}
       initialInterested={hasInterested}
+      hasSentOffer={hasSentOffer}
     />
   );
 }
