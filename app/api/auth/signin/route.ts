@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
     await createSession(payload);
 
     return NextResponse.json(payload);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[signin]", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ error: "Server error: " + (err.message || String(err)), stack: err.stack }, { status: 500 });
   }
 }
