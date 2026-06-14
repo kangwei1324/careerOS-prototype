@@ -276,6 +276,7 @@ export default function TalentProfileClient({
   honours,
   interestCount,
   initialInterested,
+  hasSentOffer,
 }: {
   candidateId: number;
   username: string;
