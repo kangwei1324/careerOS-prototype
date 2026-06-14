@@ -53,6 +53,7 @@ export default function AppNavbar() {
   const employerLinks = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/talent",    label: "Browse Talent" },
+    { href: "/offers",    label: "Sent Offers" },
   ];
 
   const navLinks = user?.role === "candidate" ? candidateLinks : employerLinks;
