@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { formatDate } from "@/lib/utils";
+import AppNavbar from "@/components/layout/AppNavbar";
+import Footer from "@/components/layout/Footer";
 
 interface SentOffer {
   id: number;
@@ -80,8 +82,10 @@ export default function SentOffersPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10 animate-fade-in">
-      <div className="bg-[#424242] rounded-2xl p-8 mb-8 shadow-lg">
+    <div className="min-h-screen bg-[#f7f7f7] flex flex-col">
+      <AppNavbar />
+      <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-10 animate-fade-in">
+        <div className="bg-[#424242] rounded-2xl p-8 mb-8 shadow-lg">
         <p className="text-[#ffc000] text-[11px] font-black uppercase tracking-widest mb-2">Tracking</p>
         <h1 className="text-white text-[28px] font-black">Sent Offers</h1>
         <p className="text-white/60 text-[14px] mt-2">
@@ -145,6 +149,8 @@ export default function SentOffersPage() {
           ))}
         </div>
       )}
+      </main>
+      <Footer />
     </div>
   );
 }
