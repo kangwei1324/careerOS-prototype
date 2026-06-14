@@ -30,5 +30,5 @@ export async function POST(req: NextRequest) {
   const result = await db.execute({ sql: `INSERT INTO work_experience (user_id, title, company, start_date, end_date, description)
        VALUES (?, ?, ?, ?, ?, ?)`, args: [session.userId, title, company, start_date, end_date ?? null, description ?? ""] });
 
-  return NextResponse.json({ id: result.lastInsertRowid });
+  return NextResponse.json({ id: Number(result.lastInsertRowid) });
 }

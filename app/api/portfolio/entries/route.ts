@@ -46,5 +46,5 @@ export async function POST(req: NextRequest) {
           skills_json, media_json, links_json, pinned_type, pinned_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, args: [session.userId, raw_log, polished_entry, category    ?? "Other", entry_date, JSON.stringify(skills ?? []), JSON.stringify(media  ?? []), JSON.stringify(links  ?? []), pinned_type ?? null, pinned_id   ?? null] });
 
-  return NextResponse.json({ id: result.lastInsertRowid });
+  return NextResponse.json({ id: Number(result.lastInsertRowid) });
 }

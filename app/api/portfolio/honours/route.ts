@@ -30,5 +30,5 @@ export async function POST(req: NextRequest) {
   const result = await db.execute({ sql: `INSERT INTO honours_awards (user_id, title, issuer, award_date)
        VALUES (?, ?, ?, ?)`, args: [session.userId, title, issuer ?? "", award_date] });
 
-  return NextResponse.json({ id: result.lastInsertRowid });
+  return NextResponse.json({ id: Number(result.lastInsertRowid) });
 }

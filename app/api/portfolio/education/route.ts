@@ -30,5 +30,5 @@ export async function POST(req: NextRequest) {
   const result = await db.execute({ sql: `INSERT INTO education (user_id, institution, degree, start_date, end_date)
        VALUES (?, ?, ?, ?, ?)`, args: [session.userId, institution, degree, start_date, end_date ?? null] });
 
-  return NextResponse.json({ id: result.lastInsertRowid });
+  return NextResponse.json({ id: Number(result.lastInsertRowid) });
 }
