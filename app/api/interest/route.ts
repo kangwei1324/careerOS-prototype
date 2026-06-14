@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   const interestsAndOffers = (await db.execute({ sql: `SELECT u.username, ep.company_name, 
               MAX(COALESCE(ei.created_at, eo.created_at)) as created_at,
-              eo.offer_type, eo.field, eo.role_name, eo.min_salary, eo.max_salary, eo.status,
+              eo.offer_type, eo.field, eo.role_name, eo.job_description, eo.min_salary, eo.max_salary, eo.status,
               MAX(ei.employer_id IS NOT NULL) as has_interest,
               MAX(eo.id IS NOT NULL) as has_offer
        FROM users u

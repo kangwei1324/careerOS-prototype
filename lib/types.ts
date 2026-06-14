@@ -55,6 +55,7 @@ export interface Signal {
   offer_type?: string;
   field?: string;
   role_name?: string;
+  job_description?: string;
   min_salary?: number;
   max_salary?: number;
   status?: string;

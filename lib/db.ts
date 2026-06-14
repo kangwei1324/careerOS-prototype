@@ -136,6 +136,7 @@ export async function initDbSchema(): Promise<void> {
         offer_type   TEXT    NOT NULL,
         field        TEXT    NOT NULL,
         role_name    TEXT    NOT NULL,
+        job_description TEXT NOT NULL DEFAULT '',
         min_salary   INTEGER,
         max_salary   INTEGER,
         status       TEXT    NOT NULL DEFAULT 'pending',
@@ -151,7 +152,8 @@ export async function initDbSchema(): Promise<void> {
         description_hash TEXT    NOT NULL,
         created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
       )
-    `
+    `,
+    `ALTER TABLE employer_offers ADD COLUMN job_description TEXT NOT NULL DEFAULT ''`
   ];
 
   for (const m of migrations) {

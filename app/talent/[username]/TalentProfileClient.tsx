@@ -304,6 +304,7 @@ export default function TalentProfileClient({
     offerType: "Interview",
     field: "",
     roleName: "",
+    jobDescription: "",
     minSalary: "",
     maxSalary: ""
   });
@@ -325,6 +326,7 @@ export default function TalentProfileClient({
           offerType: offerForm.offerType,
           field: offerForm.field,
           roleName: offerForm.roleName,
+          jobDescription: offerForm.jobDescription,
           minSalary: offerForm.minSalary ? parseInt(offerForm.minSalary) : null,
           maxSalary: offerForm.maxSalary ? parseInt(offerForm.maxSalary) : null,
         }),
@@ -334,12 +336,13 @@ export default function TalentProfileClient({
         showToast("Offer application submitted successfully ✓", "success");
         setIsOfferModalOpen(false);
         setIsConfirmingOffer(false);
-        setOfferForm({ offerType: "Interview", field: "", roleName: "", minSalary: "", maxSalary: "" });
+        setOfferForm({ offerType: "Interview", field: "", roleName: "", jobDescription: "", minSalary: "", maxSalary: "" });
       } else {
-        throw new Error();
+        const data = await res.json();
+        throw new Error(data.error || "Failed to submit offer");
       }
-    } catch (err) {
-      showToast("Failed to submit offer. Please try again.", "error");
+    } catch (err: any) {
+      showToast(err.message || "Failed to submit offer. Please try again.", "error");
     } finally {
       setIsSubmittingOffer(false);
     }
@@ -718,6 +721,18 @@ export default function TalentProfileClient({
                     value={offerForm.roleName}
                     onChange={(e) => setOfferForm({ ...offerForm, roleName: e.target.value })}
                     className="w-full bg-[#f7f7f7] border border-[#424242]/10 rounded-xl px-4 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#ffc000] focus:border-transparent transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-[#424242]/60 mb-1">Job Description</label>
+                  <textarea
+                    required
+                    placeholder="Provide details about the role..."
+                    rows={4}
+                    value={offerForm.jobDescription}
+                    onChange={(e) => setOfferForm({ ...offerForm, jobDescription: e.target.value })}
+                    className="w-full bg-[#f7f7f7] border border-[#424242]/10 rounded-xl px-4 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#ffc000] focus:border-transparent transition-all resize-none"
                   />
                 </div>
 

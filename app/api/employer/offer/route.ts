@@ -9,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { candidateId, offerType, field, roleName, minSalary, maxSalary } = await request.json();
+    const { candidateId, offerType, field, roleName, jobDescription, minSalary, maxSalary } = await request.json();
 
     if (!candidateId || !offerType || !field || !roleName) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -18,8 +18,8 @@ export async function POST(request: Request) {
     const db = getDb();
     await db.execute({
       sql: `
-        INSERT INTO employer_offers (employer_id, candidate_id, offer_type, field, role_name, min_salary, max_salary, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+        INSERT INTO employer_offers (employer_id, candidate_id, offer_type, field, role_name, job_description, min_salary, max_salary, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `,
       args: [
         session.userId,
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
         offerType,
         field,
         roleName,
+        jobDescription || "",
         minSalary || null,
         maxSalary || null
       ]
@@ -35,6 +36,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error creating offer:", error);
-    return NextResponse.json({ error: "Failed to create offer" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
