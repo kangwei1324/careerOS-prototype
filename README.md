@@ -23,7 +23,7 @@ Traditional job boards are noisy, transactional, and frustrating for both sides.
 
 ## 🚀 Key Features
 
-### For Candidates (The Living Portfolio)
+### For Candidates (The Living Portfolio + Career Path Navigator)
 * **Continuous Logging:** Log achievements in 2 minutes (what was done, outcomes, dates).
 * **AI Portfolio Polisher:** Google Gemini automatically refines raw logs into polished portfolio narratives.
 * **AI Skill Extraction:** Auto-tags relevant skills from logged entries and maps them to a visual skills display.
@@ -32,7 +32,7 @@ Traditional job boards are noisy, transactional, and frustrating for both sides.
 * **Signal Dashboard:** Track profile views, shortlists, and direct applications/interview offers from employers.
 * **Offer Action Center:** Accept or decline employer offers directly on the dashboard.
 
-### For Employers (Talent Discovery)
+### For Employers (Smart Talent Discovery)
 * **Talent Pool Browser:** Filter candidates by skills, location, field, and experience.
 * **AI Candidate Suggestions:** Input natural language talent needs, and Gemini matches candidates with detailed justifications.
 * **Interactive Timelines:** Browse a candidate's portfolio timeline (achievements over time, not static CV titles).
