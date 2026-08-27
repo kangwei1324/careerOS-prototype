@@ -1,3 +1,6 @@
+# Developer's Note:
+This project was developed heavily using AI Coding Agents as learning and experimentation for CareerOS's First Cohort Shortlisting, unfortunately our team didn't made it through the qualifying phase but we are grateful and happy with learning and insight gained from this project.
+
 # CareerOS — Passive Talent Discovery Platform
 ### Talentbank Tech Hackathon 2026 | Team PeckingDucks
 
